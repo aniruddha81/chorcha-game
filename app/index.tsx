@@ -53,6 +53,15 @@ const Index = () => {
             onPress={() => router.push("./games/vocabulary-match")}
             delay={800}
           />
+
+          <GameCard
+            title="Zip Puzzle"
+            description="Draw a path connecting all numbers in order."
+            icon="git-network"
+            color="#f59e0b"
+            onPress={() => router.push("./games/zip-puzzle")}
+            delay={1000}
+          />
         </View>
       </ScrollView>
     </View>

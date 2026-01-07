@@ -1,0 +1,124 @@
+export interface ZipLevelConfig {
+  level: number;
+  rows: number;
+  cols: number;
+  // Map of cell index to number (1-indexed sequence)
+  numberedCells: Map<number, number>;
+}
+
+// Helper to create a level from a simple grid representation
+function createLevel(
+  level: number,
+  rows: number,
+  cols: number,
+  numberPositions: { row: number; col: number; num: number }[]
+): ZipLevelConfig {
+  const numberedCells = new Map<number, number>();
+  numberPositions.forEach(({ row, col, num }) => {
+    const index = row * cols + col;
+    numberedCells.set(index, num);
+  });
+  return { level, rows, cols, numberedCells };
+}
+
+// Puzzle levels - each one is hand-crafted to be solvable
+export const ZIP_LEVELS: ZipLevelConfig[] = [
+  // Level 1: 4x4 with 4 numbers
+  createLevel(1, 4, 4, [
+    { row: 0, col: 0, num: 1 },
+    { row: 0, col: 3, num: 2 },
+    { row: 3, col: 0, num: 3 },
+    { row: 3, col: 3, num: 4 },
+  ]),
+
+  // Level 2: 3x3 with 3 numbers
+  createLevel(2, 3, 3, [
+    { row: 0, col: 0, num: 1 },
+    { row: 1, col: 1, num: 2 },
+    { row: 2, col: 2, num: 3 },
+  ]),
+
+  // Level 3: 4x3 with 3 numbers
+  createLevel(3, 3, 4, [
+    { row: 0, col: 0, num: 1 },
+    { row: 2, col: 3, num: 2 },
+    { row: 0, col: 3, num: 3 },
+  ]),
+
+  // Level 4: 4x4 with 4 numbers - slightly more complex
+  createLevel(4, 4, 4, [
+    { row: 0, col: 0, num: 1 },
+    { row: 1, col: 2, num: 2 },
+    { row: 3, col: 1, num: 3 },
+    { row: 3, col: 3, num: 4 },
+  ]),
+
+  // Level 5: 4x4 with 5 numbers
+  createLevel(5, 4, 4, [
+    { row: 0, col: 0, num: 1 },
+    { row: 0, col: 3, num: 2 },
+    { row: 2, col: 2, num: 3 },
+    { row: 3, col: 0, num: 4 },
+    { row: 3, col: 3, num: 5 },
+  ]),
+
+  // Level 6: 5x4 with 4 numbers
+  createLevel(6, 4, 5, [
+    { row: 0, col: 0, num: 1 },
+    { row: 1, col: 4, num: 2 },
+    { row: 3, col: 2, num: 3 },
+    { row: 3, col: 4, num: 4 },
+  ]),
+
+  // Level 7: 5x5 with 5 numbers
+  createLevel(7, 5, 5, [
+    { row: 0, col: 0, num: 1 },
+    { row: 0, col: 4, num: 2 },
+    { row: 2, col: 2, num: 3 },
+    { row: 4, col: 0, num: 4 },
+    { row: 4, col: 4, num: 5 },
+  ]),
+
+  // Level 8: 5x5 with 6 numbers - harder
+  createLevel(8, 5, 5, [
+    { row: 0, col: 0, num: 1 },
+    { row: 0, col: 2, num: 2 },
+    { row: 1, col: 4, num: 3 },
+    { row: 3, col: 3, num: 4 },
+    { row: 4, col: 1, num: 5 },
+    { row: 4, col: 4, num: 6 },
+  ]),
+
+  // Level 9: 6x5 with 5 numbers
+  createLevel(9, 5, 6, [
+    { row: 0, col: 0, num: 1 },
+    { row: 0, col: 5, num: 2 },
+    { row: 2, col: 3, num: 3 },
+    { row: 4, col: 0, num: 4 },
+    { row: 4, col: 5, num: 5 },
+  ]),
+
+  // Level 10: 6x6 with 6 numbers - final challenge
+  createLevel(10, 6, 6, [
+    { row: 0, col: 0, num: 1 },
+    { row: 0, col: 5, num: 2 },
+    { row: 2, col: 3, num: 3 },
+    { row: 3, col: 1, num: 4 },
+    { row: 5, col: 2, num: 5 },
+    { row: 5, col: 5, num: 6 },
+  ]),
+];
+
+export const ZIP_COLORS = {
+  background: "#09090b", // zinc-950
+  card: "#18181b", // zinc-900
+  cellEmpty: "#27272a", // zinc-800
+  cellFilled: "#3f3f46", // zinc-700
+  cellNumbered: "#52525b", // zinc-600
+  path: "#f59e0b", // amber-500
+  pathGlow: "#fbbf24", // amber-400
+  numberText: "#fafafa", // zinc-50
+  success: "#10b981", // emerald-500
+  error: "#ef4444", // red-500
+  accent: "#f59e0b", // amber-500
+};
