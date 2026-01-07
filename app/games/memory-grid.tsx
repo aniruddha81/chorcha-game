@@ -1,18 +1,11 @@
 import { Grid } from "@/components/Grid";
+import { MascotFeedback } from "@/components/MascotFeedback"; // Import
 import { COLORS, LEVELS } from "@/constants/gameConfig";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  Dimensions,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
+import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Game States
@@ -33,6 +26,7 @@ export default function GameScreen() {
   const [lives, setLives] = useState(3);
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState<GameStatus>("IDLE");
+  const [mascotMessage, setMascotMessage] = useState("");
 
   const [pattern, setPattern] = useState<number[]>([]);
   const [userSelection, setUserSelection] = useState<number[]>([]);
@@ -45,6 +39,7 @@ export default function GameScreen() {
   // Start Level
   const startLevel = useCallback(() => {
     setStatus("SHOWING_PATTERN");
+    setMascotMessage("Remember the green tiles"); // Set message here
     setUserSelection([]);
     setValidatedCells([]);
 
@@ -62,6 +57,7 @@ export default function GameScreen() {
     // Hide Pattern after duration
     setTimeout(() => {
       setStatus("WAITING_INPUT");
+      setMascotMessage("Do you remember them?"); // Update message
     }, currentLevelConfig.showDuration);
   }, [currentLevelConfig]);
 
@@ -81,25 +77,32 @@ export default function GameScreen() {
       setUserSelection((prev) => prev.filter((item) => item !== id));
     } else {
       if (userSelection.length < currentLevelConfig.activeCells) {
-        setUserSelection((prev) => [...prev, id]);
+        const newSelection = [...userSelection, id];
+        setUserSelection(newSelection);
+
+        // Auto-submit when user completes selection
+        if (newSelection.length === currentLevelConfig.activeCells) {
+          setTimeout(() => validateGuess(newSelection), 300);
+        }
       }
     }
   };
 
-  const submitGuess = () => {
-    if (userSelection.length === 0) return;
+  const validateGuess = (selection: number[]) => {
+    if (selection.length === 0) return;
 
     setStatus("VALIDATING");
 
     // Validate
-    const correctGuesses = userSelection.filter((id) => pattern.includes(id));
-    const wrongGuesses = userSelection.filter((id) => !pattern.includes(id));
-    const missedFn = pattern.filter((id) => !userSelection.includes(id));
+    const correctGuesses = selection.filter((id) => pattern.includes(id));
+    const wrongGuesses = selection.filter((id) => !pattern.includes(id));
+    const missedCells = pattern.filter((id) => !selection.includes(id));
 
     const validationResults = [
       ...correctGuesses.map((id) => ({ id, correct: true })),
       ...wrongGuesses.map((id) => ({ id, correct: false })),
-      // Optionally show missed ones? For now, let's just show what user clicked
+      // Show missed cells as correct (they were part of the pattern)
+      ...missedCells.map((id) => ({ id, correct: true })),
     ];
 
     setValidatedCells(validationResults);
@@ -108,12 +111,18 @@ export default function GameScreen() {
       correctGuesses.length === pattern.length && wrongGuesses.length === 0;
 
     if (isPerfect) {
-      // Success
+      // Success - Add points only if all correct
+      setMascotMessage("Wow, nice.. you are awesome");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setScore((s) => s + currentLevelConfig.level * 100); // Points logic
+      setScore((s) => s + currentLevelConfig.level * 100);
       setTimeout(() => {
         if (currentLevelIndex + 1 < LEVELS.length) {
-          setStatus("LEVEL_COMPLETE"); // Or just go next immediately
+          // Reset grid state immediately before level transition
+          setValidatedCells([]);
+          setUserSelection([]);
+          setPattern([]);
+
+          setStatus("LEVEL_COMPLETE");
           setCurrentLevelIndex((prev) => prev + 1);
           setStatus("IDLE"); // This triggers the useEffect to start next level
         } else {
@@ -123,12 +132,12 @@ export default function GameScreen() {
         }
       }, 1000);
     } else {
-      // Failure
+      // Failure - Show correct answer but no points added
+      setMascotMessage("Oh no let me show you again");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setLives((l) => l - 1);
 
-      // Show the actual pattern then reset or game over
-      // For now, simple delay then retry or game over
+      // Show the correct pattern for 2 seconds then proceed
       setTimeout(() => {
         if (lives - 1 <= 0) {
           setStatus("GAME_OVER");
@@ -140,6 +149,10 @@ export default function GameScreen() {
                 setLives(3);
                 setScore(0);
                 setCurrentLevelIndex(0);
+                setValidatedCells([]);
+                setUserSelection([]);
+                setPattern([]);
+                setMascotMessage(""); // Clear message
                 setStatus("IDLE");
               },
             },
@@ -147,9 +160,13 @@ export default function GameScreen() {
           ]);
         } else {
           // Retry same level with NEW pattern
+          setValidatedCells([]);
+          setUserSelection([]);
+          setPattern([]);
+          setMascotMessage(""); // Clear message
           setStatus("IDLE");
         }
-      }, 1500);
+      }, 2000);
     }
   };
 
@@ -186,33 +203,9 @@ export default function GameScreen() {
         />
       </View>
 
-      {/* Footer / Controls */}
-      <View style={styles.footer}>
-        {status === "WAITING_INPUT" && (
-          <Animated.View entering={SlideInDown.duration(300)}>
-            <TouchableOpacity
-              style={[
-                styles.button,
-                userSelection.length !== currentLevelConfig.activeCells &&
-                  styles.buttonDisabled,
-              ]}
-              onPress={submitGuess}
-              disabled={userSelection.length !== currentLevelConfig.activeCells}
-            >
-              <Text style={styles.buttonText}>
-                {userSelection.length === currentLevelConfig.activeCells
-                  ? "Submit Guess"
-                  : `Select ${currentLevelConfig.activeCells - userSelection.length} more`}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
-        {status === "SHOWING_PATTERN" && (
-          <Animated.Text entering={FadeIn} style={styles.instructionText}>
-            Watch the pattern...
-          </Animated.Text>
-        )}
+      {/* Mascot / Footer */}
+      <View style={styles.mascotContainer}>
+        <MascotFeedback text={mascotMessage} />
       </View>
     </View>
   );
@@ -255,35 +248,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#ffffff",
+    marginHorizontal: 10,
+    marginVertical: 40,
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: "rgba(157, 157, 157, 0.4)",
   },
   footer: {
-    padding: 20,
-    minHeight: 100,
-    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    justifyContent: "flex-end",
+  },
+  mascotContainer: {
+    width: "100%",
     alignItems: "center",
   },
-  button: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    borderRadius: 30,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-  },
-  buttonDisabled: {
-    backgroundColor: COLORS.inactive,
-    shadowOpacity: 0,
-  },
-  buttonText: {
-    color: "#000",
-    fontWeight: "bold",
-    fontSize: 18,
-  },
-  instructionText: {
-    color: "#fff",
-    fontSize: 18,
-    fontStyle: "italic",
-  },
+  // removed unused instructionText styles as we use mascot now
 });
