@@ -1,22 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View, Dimensions } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
+import Svg, { Ellipse } from "react-native-svg";
 
 interface MascotFeedbackProps {
   text: string;
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
 export const MascotFeedback = ({ text }: MascotFeedbackProps) => {
   const [displayedText, setDisplayedText] = useState("");
 
   useEffect(() => {
-    // Reset and start typing
     setDisplayedText("");
     if (!text) return;
 
     let currentIndex = 0;
     const interval = setInterval(() => {
-      // Use functional state to append reliably
       setDisplayedText((prev) => {
         if (currentIndex >= text.length) {
           clearInterval(interval);
@@ -26,81 +27,111 @@ export const MascotFeedback = ({ text }: MascotFeedbackProps) => {
         currentIndex++;
         return prev + nextChar;
       });
-    }, 40); // 40ms typing speed
+    }, 40);
 
     return () => clearInterval(interval);
   }, [text]);
 
   return (
     <View style={styles.container}>
-      {/* Cartoon Mascot Placeholder - Rive Animation goes here */}
-      <View style={styles.mascotPlaceholder}>
-        <Image source={require("../assets/images/chorcha-mascot.png")} />
+      {/* Background SVG - Positioned Absolutely */}
+      <View style={styles.svgBackground}>
+        <Svg width={SCREEN_WIDTH} height="123" viewBox="0 0 393 123">
+          <Ellipse cx="195" cy="77.5" rx="243" ry="77.5" fill="#D9D9D9" />
+        </Svg>
       </View>
 
-      {/* Speech Bubble */}
-      {text ? (
-        <Animated.View
-          entering={ZoomIn}
-          key={text}
-          style={styles.bubbleContainer}
-        >
-          {/* Tail Triangle */}
-          <View style={styles.tail} />
+      <View style={styles.contentWrapper}>
+        {/* Mascot Image */}
+        <View style={styles.mascotContainer}>
+          <Image
+            source={require("../assets/images/chorcha-mascot.png")}
+            style={styles.mascotImage}
+            resizeMode="contain"
+          />
+        </View>
 
-          <View style={styles.bubble}>
-            <Text style={styles.text}>{displayedText}</Text>
-          </View>
-        </Animated.View>
-      ) : null}
+        {/* Speech Bubble */}
+        {text ? (
+          <Animated.View
+            entering={ZoomIn}
+            key={text}
+            style={styles.bubbleContainer}
+          >
+            <View style={styles.bubble}>
+              <Text style={styles.text}>{displayedText}</Text>
+            </View>
+            {/* Tail Triangle - Positioned to look like the 1st image */}
+            <View style={styles.tail} />
+          </Animated.View>
+        ) : null}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    height: 120, // Adjust based on mascot size
-    paddingHorizontal: 20,
+    height: 250, // Height to accommodate mascot + bubble
+    justifyContent: "flex-end",
+    alignItems: "center",
     width: "100%",
   },
-  mascotPlaceholder: {
-    width: 100,
-    height: 100,
-    // User requested NO content here, just space.
+  svgBackground: {
+    position: "absolute",
+    bottom: -20,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+  },
+  contentWrapper: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    zIndex: 2,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  mascotContainer: {
+    width: 150,
+    height: 150,
+  },
+  mascotImage: {
+    width: "100%",
+    height: "100%",
   },
   bubbleContainer: {
     flex: 1,
-    marginBottom: 40,
-    marginLeft: 10,
+    marginBottom: 80, // Lifts bubble up
+    marginLeft: -10, // Overlaps mascot slightly like reference
     position: "relative",
   },
   bubble: {
-    backgroundColor: "#18181b", // Zinc-900 / Black
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    minHeight: 50,
+    backgroundColor: "#18181b",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    minHeight: 60,
     justifyContent: "center",
+    alignItems: "center",
   },
   tail: {
     position: "absolute",
-    left: -10,
-    bottom: 15,
+    left: 20,
+    bottom: -15,
     width: 0,
     height: 0,
-    borderTopWidth: 10,
-    borderTopColor: "transparent",
+    borderLeftWidth: 15,
+    borderLeftColor: "transparent",
     borderRightWidth: 15,
-    borderRightColor: "#18181b", // Match bubble color
-    borderBottomWidth: 10,
-    borderBottomColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopWidth: 20,
+    borderTopColor: "#18181b",
+    transform: [{ rotate: "20deg" }], // Tilts the tail towards the mascot
   },
   text: {
     color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
-    fontFamily: "System", // Or user's font
+    fontSize: 18,
+    fontWeight: "500",
+    textAlign: "center",
   },
 });

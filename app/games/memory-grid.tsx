@@ -1,12 +1,12 @@
 import { Grid } from "@/components/Grid";
-import { MascotFeedback } from "@/components/MascotFeedback"; // Import
+import { MascotFeedback } from "@/components/MascotFeedback";
 import { COLORS, LEVELS } from "@/constants/gameConfig";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Game States
 type GameStatus =
@@ -19,7 +19,6 @@ type GameStatus =
 
 export default function GameScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
 
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
@@ -39,7 +38,7 @@ export default function GameScreen() {
   // Start Level
   const startLevel = useCallback(() => {
     setStatus("SHOWING_PATTERN");
-    setMascotMessage("Remember the green tiles"); // Set message here
+    setMascotMessage("Remember the blue tiles");
     setUserSelection([]);
     setValidatedCells([]);
 
@@ -57,7 +56,7 @@ export default function GameScreen() {
     // Hide Pattern after duration
     setTimeout(() => {
       setStatus("WAITING_INPUT");
-      setMascotMessage("Do you remember them?"); // Update message
+      setMascotMessage("Do you remember them?");
     }, currentLevelConfig.showDuration);
   }, [currentLevelConfig]);
 
@@ -171,8 +170,8 @@ export default function GameScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar style="light" />
+    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+      <StatusBar style="dark" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -188,81 +187,96 @@ export default function GameScreen() {
         </View>
       </View>
 
-      {/* Grid Area */}
-      <View style={styles.gridContainer}>
-        <Grid
-          rows={currentLevelConfig.rows}
-          cols={currentLevelConfig.cols}
-          activeCells={pattern}
-          selectedCells={userSelection}
-          validatedCells={validatedCells}
-          onCellPress={handleCellPress}
-          isInteractionEnabled={status === "WAITING_INPUT"}
-          isShowingPattern={status === "SHOWING_PATTERN"}
-          width={Math.min(screenWidth - 40, currentLevelConfig.gridSize + 40)} // Max width constraint
-        />
+      {/* Grid Area - Centered */}
+      <View style={styles.gridWrapper}>
+        <View style={styles.gridContainer}>
+          <Grid
+            rows={currentLevelConfig.rows}
+            cols={currentLevelConfig.cols}
+            activeCells={pattern}
+            selectedCells={userSelection}
+            validatedCells={validatedCells}
+            onCellPress={handleCellPress}
+            isInteractionEnabled={status === "WAITING_INPUT"}
+            isShowingPattern={status === "SHOWING_PATTERN"}
+            width={Math.min(screenWidth - 48, currentLevelConfig.gridSize + 48)}
+          />
+        </View>
       </View>
 
-      {/* Mascot / Footer */}
-      <View style={styles.mascotContainer}>
-        <MascotFeedback text={mascotMessage} />
-      </View>
-    </View>
+      {/* Mascot / Footer - Only show on Level 1 */}
+      {currentLevelConfig.level === 1 && (
+        <View style={styles.mascotContainer}>
+          <MascotFeedback text={mascotMessage} />
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.background, // Assuming this is a light color
   },
   header: {
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingTop: 20, // Add some top padding below the safe area/nav bar
+    paddingBottom: 10,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start", // Align to top to handle multi-line text better
   },
   levelText: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
+    color: "#1F2937", // Dark gray (Tailwind gray-800 equivalent) for better visibility
+    fontSize: 28,
+    fontWeight: "800",
+    marginBottom: 4,
   },
   subText: {
-    color: "#a1a1aa",
-    fontSize: 14,
+    color: "#6B7280", // Gray-500
+    fontSize: 15,
+    fontWeight: "500",
   },
   stats: {
     alignItems: "flex-end",
+    backgroundColor: "#F3F4F6", // Slight background for stats pill? Optional. removing for now to keep it clean
+    borderRadius: 12,
   },
   livesText: {
     color: COLORS.error,
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
+    marginBottom: 2,
   },
   scoreText: {
     color: COLORS.primary,
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
-  gridContainer: {
+  gridWrapper: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    marginHorizontal: 10,
-    marginVertical: 40,
-    borderRadius: 2,
-    borderWidth: 1,
-    borderColor: "rgba(157, 157, 157, 0.4)",
+    marginBottom: 20,
   },
-  footer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    justifyContent: "flex-end",
+  gridContainer: {
+    // Removed the border and large white box for a cleaner look
+    // If a card look is desired, we can add shadow here instead:
+    // backgroundColor: 'white',
+    // borderRadius: 20,
+    // padding: 20,
+    // shadowColor: "#000",
+    // shadowOffset: { width: 0, height: 4 },
+    // shadowOpacity: 0.1,
+    // shadowRadius: 12,
+    // elevation: 5,
+    justifyContent: "center",
+    alignItems: "center",
   },
   mascotContainer: {
     width: "100%",
     alignItems: "center",
+    paddingBottom: 10, // Slight padding from the absolute bottom if needed
   },
-  // removed unused instructionText styles as we use mascot now
 });
