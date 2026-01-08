@@ -98,6 +98,14 @@ const Index = () => {
             onPress={() => router.push("./games/maze-escape")}
             delay={1400}
           />
+          <GameCard
+            title="Rocket Synonyme"
+            description="Match synonyms to improve vocabulary."
+            icon="rocket"
+            color="#f59e0b"
+            onPress={() => router.push("./games/rocket-synonyme")}
+            delay={1600}
+          />         
         </View>
       </ScrollView>
     </View>

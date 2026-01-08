@@ -281,7 +281,7 @@ export default function VocabularyMatchGame() {
               activeOpacity={0.8}
             >
               <Image
-                source={require("../../assets/svgs/audio.png")}
+                source={require("../../assets/images/audio.png")}
                 alt="Audio"
                 style={{ width: 56, height: 35 }}
               />
