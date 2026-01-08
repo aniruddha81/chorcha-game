@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 42,
     fontWeight: "800",
-    color: "#fff",
+    color: "#7b7b87",
   },
   highlight: {
     color: COLORS.primary,

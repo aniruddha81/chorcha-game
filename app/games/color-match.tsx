@@ -1,28 +1,29 @@
-import { COLORS } from "@/constants/gameConfig";
+import { MascotFeedback } from "@/components/MascotFeedback";
+import { PieTimer } from "@/components/PieTimer";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Animated, { ZoomIn } from "react-native-reanimated";
+import Animated, { FadeInUp, ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Game Constants
-const TIME_LIMIT = 60; // 60 seconds
-const BASE_SCORE = 100;
+const TIME_LIMIT = 60;
+const BASE_SCORE = 500;
 
-// Colors for the game
 const GAME_COLORS = [
-  { name: "RED", color: "#ef4444" }, // red-500
-  { name: "BLUE", color: "#3b82f6" }, // blue-500
-  { name: "GREEN", color: "#22c55e" }, // green-500
-  { name: "YELLOW", color: "#eab308" }, // yellow-500
-  { name: "BLACK", color: "#ffffff" }, // Use white for "Black" in dark mode for visibility, or actual black if background allows. Let's use White for contrast but call it "White" or "Black"?
-  // The Stroop test usually uses White Background.
-  // On Dark Mode, "BLACK" text should probably be White color if the word is "WHITE"?
-  // Let's stick to visible colors on dark bg.
-  { name: "PURPLE", color: "#a855f7" }, // purple-500
-  { name: "ORANGE", color: "#f97316" }, // orange-500
+  { name: "Blue", color: "#3b82f6" },
+  { name: "Red", color: "#ef4444" },
+  { name: "Green", color: "#22c55e" },
+  { name: "Orange", color: "#f97316" },
+  { name: "Purple", color: "#a855f7" },
+  { name: "Yellow", color: "#eab308" },
+  { name: "Pink", color: "#ec4899" },
+  { name: "Teal", color: "#14b8a6" },
+  { name: "Indigo", color: "#6366f1" },
+  { name: "Lime", color: "#84cc16" },
+  { name: "Cyan", color: "#06b6d4" },
+  { name: "Magenta", color: "#d946ef" },
 ];
 
 export default function ColorMatchGame() {
@@ -30,44 +31,49 @@ export default function ColorMatchGame() {
   const insets = useSafeAreaInsets();
 
   const [score, setScore] = useState(0);
+  const [lastAdded, setLastAdded] = useState<number | null>(null); // Track last points
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
-  const [lives, setLives] = useState(3);
-  const [isActive, setIsActive] = useState(false);
-  const [streak, setStreak] = useState(0);
+  const [isActive, setIsActive] = useState(true);
+  const [questionNumber, setQuestionNumber] = useState(0);
+  const [mascotMessage, setMascotMessage] = useState("");
 
-  // Card State
-  const [leftCard, setLeftCard] = useState({ text: "", color: "" }); // Meaning
-  const [rightCard, setRightCard] = useState({ text: "", color: "" }); // Ink Color
+  const [leftCard, setLeftCard] = useState({ text: "", color: "#000" });
+  const [rightCard, setRightCard] = useState({ text: "", color: "" });
 
-  // Logic: Match if Left.text (Meaning) === Right.color (Ink's Name)
-  // Wait, standard Stroop:
-  // "Does the Text on the Left match the Color on the Right?"
-  // User Prompt: "Meaning matches Color?"
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      setIsActive(false);
+      // Show game over alert
+      setTimeout(() => {
+        Alert.alert("Time's Up!", `Game Over! Your final score: ${score}`, [
+          {
+            text: "Play Again",
+            onPress: () => router.replace("/games/color-match"),
+          },
+          { text: "Home", onPress: () => router.back() },
+        ]);
+      }, 100);
+      return;
+    }
+    if (!isActive) return;
 
-  // Implementation:
-  // Left Card: Shows text "RED" (in white color)
-  // Right Card: Shows text "black" (in RED color)
-  // Result: MATCH (Left says RED, Right is RED)
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [timeLeft, isActive, score, router]);
 
   const generateRound = useCallback(() => {
-    // 50% chance of match
     const isMatch = Math.random() > 0.5;
-
-    // Pick random meaning for Left
     const meaningIdx = Math.floor(Math.random() * GAME_COLORS.length);
     const meaning = GAME_COLORS[meaningIdx];
-
-    // Pick random text for Right (doesn't matter much, just distraction)
     const rightTextIdx = Math.floor(Math.random() * GAME_COLORS.length);
     const rightText = GAME_COLORS[rightTextIdx];
 
     let inkColor;
     if (isMatch) {
-      // Ink must match Left Meaning
       inkColor = meaning.color;
     } else {
-      // Ink must NOT match Left Meaning
-      // Pick random color until it's different
       let randomColorIdx;
       do {
         randomColorIdx = Math.floor(Math.random() * GAME_COLORS.length);
@@ -75,137 +81,124 @@ export default function ColorMatchGame() {
       inkColor = GAME_COLORS[randomColorIdx].color;
     }
 
-    setLeftCard({ text: meaning.name, color: "#ffffff" }); // Left is just text (Meaning)
-    setRightCard({ text: rightText.name, color: inkColor }); // Right is colored text
+    setLeftCard({ text: meaning.name, color: "#000" });
+    setRightCard({ text: rightText.name, color: inkColor });
   }, []);
 
-  const startGame = () => {
-    setScore(0);
-    setLives(3);
-    setTimeLeft(TIME_LIMIT);
-    setIsActive(true);
-    setStreak(0);
+  useEffect(() => {
     generateRound();
-  };
-
-  useEffect(() => {
-    startGame();
   }, []);
-
-  useEffect(() => {
-    if (!isActive) return;
-    if (timeLeft <= 0 || lives <= 0) {
-      setIsActive(false);
-      Alert.alert("Game Over", `Score: ${score}\nBest Streak: ${streak}`, [
-        { text: "Try Again", onPress: startGame },
-        { text: "Menu", onPress: () => router.back() },
-      ]);
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft((t) => t - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isActive, timeLeft, lives]);
 
   const handleGuess = (userSaysMatch: boolean) => {
     if (!isActive) return;
 
-    // Check actual match
-    // Left Text (Meaning) vs Right Color (Ink)
-    // We need to find the COLOR NAME of the Right Card's Color
-    const rightColorName = GAME_COLORS.find(
-      (c) => c.color === rightCard.color
-    )?.name;
-    const isActuallyMatch = leftCard.text === rightColorName;
+    const rightColorObj = GAME_COLORS.find((c) => c.color === rightCard.color);
+    const isActuallyMatch = leftCard.text === rightColorObj?.name;
 
-    if (userSaysMatch === isActuallyMatch) {
-      // Correct
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const streakBonus = Math.floor(streak / 5) * 50;
-      setScore((s) => s + BASE_SCORE + streakBonus);
-      setStreak((s) => s + 1);
-      generateRound();
+    const isCorrect = userSaysMatch === isActuallyMatch;
+
+    if (isCorrect) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setScore((s) => s + BASE_SCORE);
+      setLastAdded(BASE_SCORE);
+
+      // Update mascot message for first 2 questions
+      if (questionNumber < 2) {
+        setMascotMessage("Great job! Keep going!");
+      }
     } else {
-      // Wrong
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setLives((l) => l - 1);
-      setStreak(0);
-      generateRound(); // Still New Round? Yes
+
+      // Deduct 300 points only if current score is greater than 300
+      if (score > 300) {
+        setScore((s) => s - 300);
+        setLastAdded(-300);
+      } else {
+        setLastAdded(0); // Show +0 if score is too low to deduct
+      }
+
+      // Update mascot message for first 2 questions
+      if (questionNumber < 2) {
+        setMascotMessage("Oops! Try the next one!");
+      }
     }
+
+    setQuestionNumber((prev) => prev + 1);
+    generateRound();
   };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
-      {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Color Match</Text>
-          <Text style={styles.subText}>
-            {timeLeft}s | Lives: {lives}
-          </Text>
-        </View>
-        <View style={styles.stats}>
-          <Text style={styles.scoreText}>{score}</Text>
-          <Text style={styles.streakText}>Streak: {streak}</Text>
+        <Text style={styles.levelText}>Level 2</Text>
+
+        <PieTimer remaining={timeLeft} total={TIME_LIMIT} />
+
+        <View style={styles.scoreContainer}>
+          {lastAdded !== null && (
+            <Animated.Text
+              key={`points-${score}-${lastAdded}`} // Key ensures animation re-runs
+              entering={FadeInUp}
+              style={[
+                styles.pointsAdded,
+                { color: lastAdded > 0 ? "#50C878" : "#EF4444" }, // Green if positive, Red if negative/zero
+              ]}
+            >
+              {lastAdded > 0 ? `+${lastAdded}` : lastAdded}
+            </Animated.Text>
+          )}
+          <Text style={styles.totalPoints}>{score} pt</Text>
         </View>
       </View>
 
-      {/* Game Area */}
       <View style={styles.gameArea}>
-        <Text style={styles.instruction}>
-          Does the meaning match the color?
-        </Text>
-
-        <View style={styles.cardsContainer}>
-          {/* Left Card - Meaning */}
+        <View style={styles.cardsRow}>
           <Animated.View
-            key={`left-${score}`}
+            key={`l-${leftCard.text}-${score}`}
             entering={ZoomIn}
-            style={[styles.card, styles.leftCard]}
+            style={styles.card}
           >
-            <Text style={styles.cardLabel}>MEANING</Text>
-            <Text style={[styles.cardText, { color: "#fff" }]}>
+            <Text style={[styles.mainText, { color: leftCard.color }]}>
               {leftCard.text}
             </Text>
           </Animated.View>
 
-          {/* Right Card - Color */}
           <Animated.View
-            key={`right-${score}`}
-            entering={ZoomIn.delay(50)}
-            style={[styles.card, styles.rightCard]}
+            key={`r-${rightCard.text}-${score}`}
+            entering={ZoomIn}
+            style={styles.card}
           >
-            <Text style={styles.cardLabel}>COLOR</Text>
-            <Text style={[styles.cardText, { color: rightCard.color }]}>
+            <Text style={[styles.mainText, { color: rightCard.color }]}>
               {rightCard.text}
             </Text>
           </Animated.View>
         </View>
       </View>
 
-      {/* Controls */}
       <View style={styles.controls}>
         <TouchableOpacity
-          style={[styles.button, styles.noButton]}
+          style={[styles.actionButton, styles.noButton]}
           onPress={() => handleGuess(false)}
-          activeOpacity={0.8}
         >
-          <Text style={styles.buttonText}>NO</Text>
+          <Text style={styles.buttonText}>No</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.button, styles.yesButton]}
+          style={[styles.actionButton, styles.yesButton]}
           onPress={() => handleGuess(true)}
-          activeOpacity={0.8}
         >
-          <Text style={styles.buttonText}>YES</Text>
+          <Text style={styles.buttonText}>Yes</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Mascot - Only show for first 2 questions */}
+      {questionNumber < 2 && (
+        <View style={styles.mascotSpace}>
+          <MascotFeedback text={mascotMessage} />
+        </View>
+      )}
     </View>
   );
 }
@@ -213,110 +206,100 @@ export default function ColorMatchGame() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: "#F2F2F2",
   },
   header: {
-    padding: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 25,
+    height: 60,
   },
-  title: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
+  levelText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#666",
   },
-  subText: {
-    color: "#a1a1aa",
-    marginTop: 4,
+  timerWrapper: {
+    width: 40,
+    height: 40,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  stats: {
+  scoreContainer: {
     alignItems: "flex-end",
+    minWidth: 80, // Prevent jumping
   },
-  scoreText: {
-    color: COLORS.primary,
-    fontSize: 28,
+  pointsAdded: {
+    fontSize: 16,
     fontWeight: "bold",
   },
-  streakText: {
-    color: COLORS.success,
-    fontSize: 14,
-    fontWeight: "bold",
+  totalPoints: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#333",
+    marginTop: -4,
   },
   gameArea: {
-    flex: 1,
+    flex: 2,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 15,
   },
-  instruction: {
-    color: "#a1a1aa",
-    fontSize: 18,
-    marginBottom: 40,
-  },
-  cardsContainer: {
+  cardsRow: {
     flexDirection: "row",
-    gap: 20,
-    width: "100%",
-    justifyContent: "space-around",
+    gap: 15,
   },
   card: {
-    backgroundColor: COLORS.card,
-    width: "45%",
-    aspectRatio: 0.8,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#333",
-    padding: 10,
-  },
-  leftCard: {
-    borderColor: COLORS.primary,
-  },
-  rightCard: {
-    borderColor: COLORS.error, // or just differentiate
-  },
-  cardLabel: {
-    color: "#555",
-    fontSize: 12,
-    fontWeight: "bold",
-    position: "absolute",
-    top: 15,
-    letterSpacing: 2,
-  },
-  cardText: {
-    fontSize: 32,
-    fontWeight: "900",
-    textTransform: "uppercase",
-  },
-  controls: {
-    flexDirection: "row",
-    padding: 20,
-    paddingBottom: 40,
-    gap: 20,
-    height: 140,
-  },
-  button: {
     flex: 1,
-    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    aspectRatio: 0.78,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  mainText: {
+    fontSize: 42, // Adjusted slightly for better fit
+    fontWeight: "500",
+  },
+  controls: {
+    flexDirection: "row",
+    paddingHorizontal: 25,
+    gap: 20,
+    marginBottom: 20,
+  },
+  actionButton: {
+    flex: 1,
+    height: 75,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D0D0D0",
   },
   noButton: {
-    backgroundColor: COLORS.error,
+    backgroundColor: "#50C878",
+    borderColor: "#45AD68",
   },
   yesButton: {
-    backgroundColor: COLORS.success,
+    backgroundColor: "#E0E0E0",
   },
   buttonText: {
-    color: "#fff",
     fontSize: 32,
-    fontWeight: "900",
+    color: "#444",
+    fontWeight: "500",
+  },
+  mascotSpace: {
+    flex: 1.5,
   },
 });

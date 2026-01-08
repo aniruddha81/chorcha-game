@@ -37,6 +37,9 @@ export const Grid = ({
   const GAP = 8;
   const cellSize = (width - cols * GAP) / cols;
 
+  // Calculate height to maintain square cells
+  const gridHeight = rows * cellSize + rows * GAP;
+
   const renderCells = () => {
     const cells = [];
     for (let i = 0; i < totalCells; i++) {
@@ -67,7 +70,12 @@ export const Grid = ({
     <View
       style={[
         styles.grid,
-        { width: width, flexWrap: "wrap", flexDirection: "row" },
+        {
+          width: width,
+          height: gridHeight,
+          flexWrap: "wrap",
+          flexDirection: "row",
+        },
       ]}
     >
       {renderCells()}

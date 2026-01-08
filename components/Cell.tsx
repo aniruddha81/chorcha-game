@@ -33,31 +33,9 @@ export const Cell = ({
   const scale = useSharedValue(1);
   const colorProgress = useSharedValue(0); // 0=inactive, 1=active/blink, 2=selected, 3=success, 4=error
 
+  // Unified Effect for Visual State
   useEffect(() => {
-    if (isBlinking) {
-      colorProgress.value = withTiming(1, { duration: 300 });
-      scale.value = withSequence(
-        withTiming(1.05, { duration: 150 }),
-        withTiming(1, { duration: 150 })
-      );
-    } else {
-      colorProgress.value = withTiming(0, { duration: 300 });
-    }
-  }, [isBlinking]);
-
-  useEffect(() => {
-    if (isSelected) {
-      colorProgress.value = withSpring(2);
-      scale.value = withSpring(0.95);
-    } else if (!isBlinking) {
-      // Reset if not selected and not blinking
-      colorProgress.value = withTiming(0);
-      scale.value = withSpring(1);
-    }
-  }, [isSelected, isBlinking]);
-
-  // Validation Effect
-  useEffect(() => {
+    // Priority: Validation > Selection > Blinking > Idle
     if (isCorrect === true) {
       colorProgress.value = withTiming(3);
       scale.value = withSequence(
@@ -71,18 +49,43 @@ export const Cell = ({
         withTiming(1.1, { duration: 50 }),
         withTiming(1, { duration: 50 })
       );
+    } else if (isSelected) {
+      colorProgress.value = withSpring(2);
+      scale.value = withSpring(0.95);
+    } else if (isBlinking) {
+      colorProgress.value = withTiming(1, { duration: 300 });
+      scale.value = withSequence(
+        withTiming(1.05, { duration: 150 }),
+        withTiming(1, { duration: 150 })
+      );
+    } else {
+      // Reset to idle
+      colorProgress.value = withTiming(0, { duration: 300 });
+      scale.value = withSpring(1);
     }
-  }, [isCorrect]);
+  }, [isBlinking, isSelected, isCorrect]);
 
-  const rStyle = useAnimatedStyle(() => {
+  // Shadow Color Interpolation
+  const rShadowStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      colorProgress.value,
+      [0, 1, 2, 3, 4],
+      ["#a3a3a3", "#0e7490", "#0369a1", "#15803d", "#b91c1c"] // Darker shades for shadow
+    );
+    return { backgroundColor };
+  });
+
+  const rFaceStyle = useAnimatedStyle(() => {
     const backgroundColor = interpolateColor(
       colorProgress.value,
       [0, 1, 2, 3, 4],
       [COLORS.inactive, COLORS.primary, "#38bdf8", COLORS.success, COLORS.error]
     );
+    return { backgroundColor };
+  });
 
+  const rContainerStyle = useAnimatedStyle(() => {
     return {
-      backgroundColor,
       transform: [{ scale: scale.value }],
     };
   });
@@ -94,25 +97,41 @@ export const Cell = ({
   };
 
   return (
-    <Pressable onPress={handlePress} disabled={disabled}>
+    <Pressable onPress={handlePress} disabled={disabled} style={{ margin: 4 }}>
       <Animated.View
-        style={[styles.cell, { width: size, height: size }, rStyle]}
-      />
+        style={[
+          styles.container,
+          { width: size, height: size },
+          rContainerStyle,
+        ]}
+      >
+        <Animated.View style={[styles.buttonShadow, rShadowStyle]} />
+        <Animated.View style={[styles.buttonFace, rFaceStyle]} />
+      </Animated.View>
     </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
-  cell: {
+  container: {
+    position: "relative",
+  },
+  buttonShadow: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    height: "90%",
     borderRadius: 8,
-    margin: 4,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+  },
+  buttonFace: {
+    position: "absolute",
+    top: 0,
+    width: "100%",
+    height: "92%",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)", // Subtle highlight
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
