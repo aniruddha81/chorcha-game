@@ -15,196 +15,88 @@ export interface DecimalBlockSet {
 }
 
 // 8-block sets (4 + 4) - Each side sums to targetPerSide
-export const EIGHT_BLOCK_SETS: DecimalBlockSet[] = [
-    // Easy sets (difficulty 1) - simple numbers
+// User provided sets for specific levels
+export const LEVEL_SETS: DecimalBlockSet[] = [
+    // Set 1: 1, 2.5, 4, 5.5 (Target 6.5)
     {
         id: 1,
         difficulty: 1,
-        // Left: 1.0 + 0.5 + 0.3 + 0.2 = 2.0
-        leftBlocks: [1.0, 0.5, 0.3, 0.2],
-        // Right: 0.8 + 0.6 + 0.4 + 0.2 = 2.0
-        rightBlocks: [0.8, 0.6, 0.4, 0.2],
-        targetPerSide: 2.0,
+        leftBlocks: [1, 5.5],
+        rightBlocks: [2.5, 4],
+        targetPerSide: 6.5,
     },
+    // Set 2: 2, 3.5, 5.5, 7 (Target 9)
     {
         id: 2,
         difficulty: 1,
-        // Left: 1.5 + 0.5 + 0.5 + 0.5 = 3.0
-        leftBlocks: [1.5, 0.5, 0.5, 0.5],
-        // Right: 1.0 + 1.0 + 0.5 + 0.5 = 3.0
-        rightBlocks: [1.0, 1.0, 0.5, 0.5],
-        targetPerSide: 3.0,
+        leftBlocks: [2, 7],
+        rightBlocks: [3.5, 5.5],
+        targetPerSide: 9,
     },
+    // Set 3: 1.2, 2.2, 5.2, 4.2 (Target 6.4)
+    // Note: User equation was 2.2+5.2 != 1.2+4.2. Corrected to 1.2+5.2 = 2.2+4.2
     {
         id: 3,
         difficulty: 1,
-        // Left: 0.5 + 0.5 + 0.5 + 0.5 = 2.0
-        leftBlocks: [0.5, 0.5, 0.5, 0.5],
-        // Right: 1.0 + 0.4 + 0.4 + 0.2 = 2.0
-        rightBlocks: [1.0, 0.4, 0.4, 0.2],
-        targetPerSide: 2.0,
+        leftBlocks: [1.2, 5.2],
+        rightBlocks: [2.2, 4.2],
+        targetPerSide: 6.4,
     },
+    // Set 4: 22, 24, 48, 50 (Target 72)
     {
         id: 4,
-        difficulty: 1,
-        // Left: 1.2 + 0.8 + 0.5 + 0.5 = 3.0
-        leftBlocks: [1.2, 0.8, 0.5, 0.5],
-        // Right: 1.5 + 0.6 + 0.6 + 0.3 = 3.0
-        rightBlocks: [1.5, 0.6, 0.6, 0.3],
-        targetPerSide: 3.0,
+        difficulty: 2,
+        leftBlocks: [22, 50],
+        rightBlocks: [24, 48],
+        targetPerSide: 72,
     },
-    // Medium sets (difficulty 2)
+    // Set 5: 3, 2, 7, 10, 12 (Target 17)
     {
         id: 5,
         difficulty: 2,
-        // Left: 1.8 + 0.7 + 0.3 + 0.2 = 3.0
-        leftBlocks: [1.8, 0.7, 0.3, 0.2],
-        // Right: 1.2 + 0.9 + 0.5 + 0.4 = 3.0
-        rightBlocks: [1.2, 0.9, 0.5, 0.4],
-        targetPerSide: 3.0,
+        leftBlocks: [3, 2, 12],
+        rightBlocks: [7, 10],
+        targetPerSide: 17,
     },
+    // Set 6: 3, 5, 6, 8, 10 (Target 16)
     {
         id: 6,
         difficulty: 2,
-        // Left: 1.5 + 1.0 + 0.8 + 0.7 = 4.0
-        leftBlocks: [1.5, 1.0, 0.8, 0.7],
-        // Right: 1.2 + 1.2 + 0.9 + 0.7 = 4.0
-        rightBlocks: [1.2, 1.2, 0.9, 0.7],
-        targetPerSide: 4.0,
+        leftBlocks: [3, 5, 8],
+        rightBlocks: [6, 10],
+        targetPerSide: 16,
     },
+    // Set 7: 3.5, 5.5, 8, 9, 10 (Target 18)
     {
         id: 7,
         difficulty: 2,
-        // Left: 2.0 + 0.6 + 0.5 + 0.4 = 3.5
-        leftBlocks: [2.0, 0.6, 0.5, 0.4],
-        // Right: 1.5 + 0.8 + 0.7 + 0.5 = 3.5
-        rightBlocks: [1.5, 0.8, 0.7, 0.5],
-        targetPerSide: 3.5,
+        leftBlocks: [3.5, 5.5, 9],
+        rightBlocks: [8, 10],
+        targetPerSide: 18,
     },
+    // Set 8: 2, 1, 4, 5, 6, 8 (Target 13)
     {
         id: 8,
-        difficulty: 2,
-        // Left: 1.8 + 1.2 + 0.5 + 0.5 = 4.0
-        leftBlocks: [1.8, 1.2, 0.5, 0.5],
-        // Right: 1.5 + 1.0 + 0.8 + 0.7 = 4.0
-        rightBlocks: [1.5, 1.0, 0.8, 0.7],
-        targetPerSide: 4.0,
+        difficulty: 3,
+        leftBlocks: [1, 2, 4, 6],
+        rightBlocks: [5, 8],
+        targetPerSide: 13,
     },
-    // Hard sets (difficulty 3)
+    // Set 9: 4, 5, 3, 7, 8, 9 (Target 18)
     {
         id: 9,
         difficulty: 3,
-        // Left: 2.5 + 1.2 + 0.8 + 0.5 = 5.0
-        leftBlocks: [2.5, 1.2, 0.8, 0.5],
-        // Right: 1.8 + 1.5 + 1.0 + 0.7 = 5.0
-        rightBlocks: [1.8, 1.5, 1.0, 0.7],
-        targetPerSide: 5.0,
+        leftBlocks: [4, 5, 9],
+        rightBlocks: [3, 7, 8],
+        targetPerSide: 18,
     },
+    // Set 10: 4, 6, 7, 8, 9 (Target 17)
     {
         id: 10,
         difficulty: 3,
-        // Left: 2.2 + 1.3 + 0.9 + 0.6 = 5.0
-        leftBlocks: [2.2, 1.3, 0.9, 0.6],
-        // Right: 1.8 + 1.2 + 1.2 + 0.8 = 5.0
-        rightBlocks: [1.8, 1.2, 1.2, 0.8],
-        targetPerSide: 5.0,
-    },
-];
-
-// 10-block sets (5 + 5) - Each side sums to targetPerSide
-export const TEN_BLOCK_SETS: DecimalBlockSet[] = [
-    // Easy 10-block sets (difficulty 1)
-    {
-        id: 11,
-        difficulty: 1,
-        // Left: 1.0 + 0.5 + 0.5 + 0.5 + 0.5 = 3.0
-        leftBlocks: [1.0, 0.5, 0.5, 0.5, 0.5],
-        // Right: 1.5 + 0.5 + 0.4 + 0.4 + 0.2 = 3.0
-        rightBlocks: [1.5, 0.5, 0.4, 0.4, 0.2],
-        targetPerSide: 3.0,
-    },
-    {
-        id: 12,
-        difficulty: 1,
-        // Left: 1.2 + 0.8 + 0.5 + 0.3 + 0.2 = 3.0
-        leftBlocks: [1.2, 0.8, 0.5, 0.3, 0.2],
-        // Right: 1.0 + 0.6 + 0.6 + 0.5 + 0.3 = 3.0
-        rightBlocks: [1.0, 0.6, 0.6, 0.5, 0.3],
-        targetPerSide: 3.0,
-    },
-    // Medium 10-block sets (difficulty 2)
-    {
-        id: 13,
-        difficulty: 2,
-        // Left: 1.5 + 1.0 + 0.8 + 0.4 + 0.3 = 4.0
-        leftBlocks: [1.5, 1.0, 0.8, 0.4, 0.3],
-        // Right: 1.2 + 1.2 + 0.6 + 0.5 + 0.5 = 4.0
-        rightBlocks: [1.2, 1.2, 0.6, 0.5, 0.5],
-        targetPerSide: 4.0,
-    },
-    {
-        id: 14,
-        difficulty: 2,
-        // Left: 1.8 + 0.9 + 0.6 + 0.4 + 0.3 = 4.0
-        leftBlocks: [1.8, 0.9, 0.6, 0.4, 0.3],
-        // Right: 1.5 + 0.8 + 0.7 + 0.5 + 0.5 = 4.0
-        rightBlocks: [1.5, 0.8, 0.7, 0.5, 0.5],
-        targetPerSide: 4.0,
-    },
-    {
-        id: 15,
-        difficulty: 2,
-        // Left: 2.0 + 1.0 + 0.5 + 0.3 + 0.2 = 4.0
-        leftBlocks: [2.0, 1.0, 0.5, 0.3, 0.2],
-        // Right: 1.5 + 1.2 + 0.5 + 0.5 + 0.3 = 4.0
-        rightBlocks: [1.5, 1.2, 0.5, 0.5, 0.3],
-        targetPerSide: 4.0,
-    },
-    // Hard 10-block sets (difficulty 3)
-    {
-        id: 16,
-        difficulty: 3,
-        // Left: 2.5 + 1.2 + 0.8 + 0.3 + 0.2 = 5.0
-        leftBlocks: [2.5, 1.2, 0.8, 0.3, 0.2],
-        // Right: 1.8 + 1.5 + 0.7 + 0.6 + 0.4 = 5.0
-        rightBlocks: [1.8, 1.5, 0.7, 0.6, 0.4],
-        targetPerSide: 5.0,
-    },
-    {
-        id: 17,
-        difficulty: 3,
-        // Left: 2.2 + 1.5 + 0.8 + 0.3 + 0.2 = 5.0
-        leftBlocks: [2.2, 1.5, 0.8, 0.3, 0.2],
-        // Right: 1.8 + 1.2 + 1.0 + 0.5 + 0.5 = 5.0
-        rightBlocks: [1.8, 1.2, 1.0, 0.5, 0.5],
-        targetPerSide: 5.0,
-    },
-    {
-        id: 18,
-        difficulty: 3,
-        // Left: 2.0 + 1.8 + 0.6 + 0.4 + 0.2 = 5.0
-        leftBlocks: [2.0, 1.8, 0.6, 0.4, 0.2],
-        // Right: 1.5 + 1.5 + 1.0 + 0.5 + 0.5 = 5.0
-        rightBlocks: [1.5, 1.5, 1.0, 0.5, 0.5],
-        targetPerSide: 5.0,
-    },
-    {
-        id: 19,
-        difficulty: 3,
-        // Left: 2.5 + 1.5 + 0.5 + 0.3 + 0.2 = 5.0
-        leftBlocks: [2.5, 1.5, 0.5, 0.3, 0.2],
-        // Right: 2.0 + 1.2 + 0.8 + 0.6 + 0.4 = 5.0
-        rightBlocks: [2.0, 1.2, 0.8, 0.6, 0.4],
-        targetPerSide: 5.0,
-    },
-    {
-        id: 20,
-        difficulty: 3,
-        // Left: 2.8 + 1.2 + 0.5 + 0.3 + 0.2 = 5.0
-        leftBlocks: [2.8, 1.2, 0.5, 0.3, 0.2],
-        // Right: 1.8 + 1.5 + 0.9 + 0.5 + 0.3 = 5.0
-        rightBlocks: [1.8, 1.5, 0.9, 0.5, 0.3],
-        targetPerSide: 5.0,
+        leftBlocks: [4, 6, 7],
+        rightBlocks: [8, 9],
+        targetPerSide: 17,
     },
 ];
 
@@ -221,33 +113,19 @@ function shuffleBlocks(blocks: number[]): number[] {
 }
 
 /**
- * Get a random balanced block set for a given level
+ * Get the specific block set for a given level
  * @param level - Game level (1-10)
- * @param useEightBlocks - If true, use 8-block sets, else 10-block sets
+ * @param _useEightBlocks - Ignored now, using fixed sets
  * @returns A balanced block set with all blocks shuffled together
  */
 export function getRandomDecimalBlockSet(
     level: number,
-    useEightBlocks: boolean = true
+    _useEightBlocks: boolean = true
 ): { blocks: number[]; targetPerSide: number } {
-    const sets = useEightBlocks ? EIGHT_BLOCK_SETS : TEN_BLOCK_SETS;
-
-    // Determine difficulty based on level
-    let difficulty: 1 | 2 | 3;
-    if (level <= 3) {
-        difficulty = 1;
-    } else if (level <= 6) {
-        difficulty = 2;
-    } else {
-        difficulty = 3;
-    }
-
-    // Filter sets by difficulty
-    const matchingSets = sets.filter(s => s.difficulty === difficulty);
-
-    // Pick a random set (or fallback to any set)
-    const availableSets = matchingSets.length > 0 ? matchingSets : sets;
-    const selectedSet = availableSets[Math.floor(Math.random() * availableSets.length)];
+    // Map level to index (Level 1 -> Index 0)
+    // Wrap around if level > 10
+    const setIndex = (level - 1) % LEVEL_SETS.length;
+    const selectedSet = LEVEL_SETS[setIndex];
 
     // Combine and shuffle all blocks
     const allBlocks = [...selectedSet.leftBlocks, ...selectedSet.rightBlocks];
@@ -263,10 +141,10 @@ export function getRandomDecimalBlockSet(
  * Get color for a decimal block based on its value
  */
 export function getDecimalBlockColor(weight: number): string {
-    if (weight <= 0.5) return '#22d3ee'; // cyan - light
-    if (weight <= 1.0) return '#4ade80'; // green - medium light
-    if (weight <= 1.5) return '#fbbf24'; // amber - medium
-    if (weight <= 2.0) return '#fb923c'; // orange - medium heavy
+    if (weight <= 3.0) return '#22d3ee'; // cyan - light
+    if (weight <= 6.0) return '#4ade80'; // green - medium light
+    if (weight <= 10.0) return '#fbbf24'; // amber - medium
+    if (weight <= 25.0) return '#fb923c'; // orange - medium heavy
     return '#f87171'; // red - heavy
 }
 

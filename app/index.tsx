@@ -71,6 +71,15 @@ const Index = () => {
             onPress={() => router.push("./games/weight-balance")}
             delay={1200}
           />
+
+          <GameCard
+            title="Maze Escape"
+            description="Navigate through the maze before time runs out!"
+            icon="navigate"
+            color="#10b981"
+            onPress={() => router.push("./games/maze-escape")}
+            delay={1400}
+          />
         </View>
       </ScrollView>
     </View>

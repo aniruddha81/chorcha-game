@@ -1,3 +1,5 @@
+import { MascotFeedback } from "@/components/MascotFeedback";
+import { PieTimer } from "@/components/PieTimer";
 import { COLORS } from "@/constants/gameConfig";
 import { AVAILABLE_ICONS } from "@/constants/iconMemoryGameIcon";
 import { Ionicons } from "@expo/vector-icons";
@@ -5,27 +7,26 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     Dimensions,
-    ScrollView,
+    Image,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
 import Animated, {
     FadeIn,
     FadeInDown,
     FadeInUp,
-    FadeOut,
-    SlideInDown,
     useAnimatedStyle,
     useSharedValue,
     withRepeat,
     withSequence,
     withSpring,
     withTiming,
+    ZoomIn
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -34,8 +35,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 type GameStatus = "IDLE" | "PLAYING" | "GAME_OVER" | "SUCCESS";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const GAME_BOX_SIZE = SCREEN_WIDTH - 40;
+const ICON_SIZE = 50;
 const TOTAL_LAYERS = 10;
 const INITIAL_ICONS = 3; // Start with 3 icons on layer 1
+
+// Icon colors for colorful display
+const ICON_COLORS = [
+    // "#ef4444", // red
+    // "#f97316", // orange
+    "#f59e0b", // amber
+    "#84cc16", // lime
+    // "#22c55e", // green
+    "#14b8a6", // teal
+    "#06b6d4", // cyan
+    "#3b82f6", // blue
+    "#8b5cf6", // violet
+    "#d946ef", // fuchsia
+    "#ec4899", // pink
+];
 
 // Fisher-Yates shuffle
 function shuffleArray<T>(array: T[]): T[] {
@@ -56,6 +74,9 @@ interface IconButtonProps {
     delay: number;
     isDisabled: boolean;
     feedbackState: "none" | "correct" | "wrong";
+    iconColor: string;
+    positionX?: number;
+    positionY?: number;
 }
 
 const IconButton: React.FC<IconButtonProps> = ({
@@ -64,6 +85,9 @@ const IconButton: React.FC<IconButtonProps> = ({
     delay,
     isDisabled,
     feedbackState,
+    iconColor,
+    positionX,
+    positionY,
 }) => {
     const scale = useSharedValue(1);
     const glow = useSharedValue(0);
@@ -116,14 +140,12 @@ const IconButton: React.FC<IconButtonProps> = ({
     const getBorderColor = () => {
         if (feedbackState === "correct") return COLORS.success;
         if (feedbackState === "wrong") return COLORS.error;
-        return "#3f3f46";
+        return "transparent"; // No border for normal state
     };
 
-    const getBackgroundColor = () => {
-        if (feedbackState === "correct") return "rgba(74, 222, 128, 0.15)";
-        if (feedbackState === "wrong") return "rgba(248, 113, 113, 0.15)";
-        return COLORS.card;
-    };
+    const positionStyle = positionX !== undefined && positionY !== undefined
+        ? { position: 'absolute' as const, left: positionX, top: positionY }
+        : {};
 
     return (
         <AnimatedTouchable
@@ -132,11 +154,15 @@ const IconButton: React.FC<IconButtonProps> = ({
                 styles.iconButton,
                 animatedStyle,
                 glowStyle,
+                positionStyle,
                 {
                     borderColor: getBorderColor(),
-                    backgroundColor: getBackgroundColor(),
-                    shadowColor:
-                        feedbackState === "correct" ? COLORS.success : COLORS.primary,
+                    borderWidth: feedbackState !== "none" ? 2 : 0, // Only show border on feedback
+                    backgroundColor: '#000',
+                    width: ICON_SIZE,
+                    height: ICON_SIZE,
+                    borderRadius: ICON_SIZE / 2,
+                    shadowColor: iconColor,
                 },
             ]}
             onPress={handlePress}
@@ -145,52 +171,20 @@ const IconButton: React.FC<IconButtonProps> = ({
         >
             <Ionicons
                 name={iconName}
-                size={36}
+                size={ICON_SIZE}
                 color={
                     feedbackState === "correct"
                         ? COLORS.success
                         : feedbackState === "wrong"
                             ? COLORS.error
-                            : "#fff"
+                            : iconColor
                 }
             />
         </AnimatedTouchable>
     );
 };
 
-// Progress Bar Component
-const ProgressBar: React.FC<{ currentLayer: number; totalLayers: number }> = ({
-    currentLayer,
-    totalLayers,
-}) => {
-    const progress = currentLayer / totalLayers;
 
-    return (
-        <View style={styles.progressContainer}>
-            <View style={styles.progressTrack}>
-                <Animated.View
-                    entering={FadeIn}
-                    style={[
-                        styles.progressFill,
-                        { width: `${progress * 100}%` },
-                    ]}
-                />
-            </View>
-            <View style={styles.progressDots}>
-                {Array.from({ length: totalLayers }).map((_, index) => (
-                    <View
-                        key={index}
-                        style={[
-                            styles.progressDot,
-                            index < currentLayer && styles.progressDotActive,
-                            index === currentLayer - 1 && styles.progressDotCurrent,
-                        ]}
-                    />
-                ))}
-            </View>
-        </View>
-    );
-};
 
 export default function IconMemoryGame() {
     const router = useRouter();
@@ -198,6 +192,7 @@ export default function IconMemoryGame() {
 
     const [status, setStatus] = useState<GameStatus>("IDLE");
     const [currentLayer, setCurrentLayer] = useState(1);
+    const [iconPositions, setIconPositions] = useState<{ x: number; y: number }[]>([]);
     const [displayedIcons, setDisplayedIcons] = useState<
         (keyof typeof Ionicons.glyphMap)[]
     >([]);
@@ -210,6 +205,47 @@ export default function IconMemoryGame() {
         state: "correct" | "wrong";
     } | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [score, setScore] = useState(1500);
+    const [timeRemaining, setTimeRemaining] = useState(100);
+    const totalTimeLimit = 100;
+
+    const generatePositions = useCallback((count: number) => {
+        const newPositions: { x: number; y: number }[] = [];
+        const padding = 20; // Padding from edge
+
+        for (let i = 0; i < count; i++) {
+            let placed = false;
+            let attempts = 0;
+            while (!placed && attempts < 100) {
+                const x = Math.random() * (GAME_BOX_SIZE - ICON_SIZE - padding * 2) + padding;
+                const y = Math.random() * (GAME_BOX_SIZE - ICON_SIZE - padding * 2) + padding;
+
+                // Check overlap
+                let overlap = false;
+                for (const pos of newPositions) {
+                    const dist = Math.sqrt(Math.pow(pos.x - x, 2) + Math.pow(pos.y - y, 2));
+                    if (dist < ICON_SIZE * 1.1) { // Ensure some spacing
+                        overlap = true;
+                        break;
+                    }
+                }
+
+                if (!overlap) {
+                    newPositions.push({ x, y });
+                    placed = true;
+                }
+                attempts++;
+            }
+            // If failed to place, just place randomly (rare)
+            if (!placed) {
+                newPositions.push({
+                    x: Math.random() * (GAME_BOX_SIZE - ICON_SIZE - padding * 2) + padding,
+                    y: Math.random() * (GAME_BOX_SIZE - ICON_SIZE - padding * 2) + padding
+                });
+            }
+        }
+        setIconPositions(newPositions);
+    }, []);
 
     // Initialize game
     const initializeGame = useCallback(() => {
@@ -219,12 +255,14 @@ export default function IconMemoryGame() {
         setCurrentLayer(1);
         setFeedbackIcon(null);
         setIsProcessing(false);
+        setTimeRemaining(totalTimeLimit);
 
         // First layer: show INITIAL_ICONS random icons
         const initialIcons = shuffledIcons.slice(0, INITIAL_ICONS);
         setDisplayedIcons(shuffleArray(initialIcons));
+        generatePositions(initialIcons.length);
         setStatus("PLAYING");
-    }, []);
+    }, [generatePositions]);
 
     // Start game on mount
     useEffect(() => {
@@ -233,6 +271,27 @@ export default function IconMemoryGame() {
             return () => clearTimeout(timer);
         }
     }, [status, initializeGame]);
+
+    // Timer Logic
+    useEffect(() => {
+        if (status !== "PLAYING") return;
+
+        const interval = setInterval(() => {
+            setTimeRemaining((prev) => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    setStatus("GAME_OVER");
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [status]);
+
+    // Animation for Shake
+    const shake = useSharedValue(0);
 
     // Handle icon press
     const handleIconPress = useCallback(
@@ -247,9 +306,16 @@ export default function IconMemoryGame() {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 setFeedbackIcon({ icon: iconName, state: "wrong" });
 
+                // Trigger Shake Animation
+                shake.value = withSequence(
+                    withTiming(-10, { duration: 50 }),
+                    withRepeat(withTiming(10, { duration: 100 }), 4, true),
+                    withTiming(0, { duration: 50 })
+                );
+
                 setTimeout(() => {
                     setStatus("GAME_OVER");
-                }, 800);
+                }, 1200); // Increased delay to show error effect
                 return;
             }
 
@@ -281,6 +347,7 @@ export default function IconMemoryGame() {
                     // Combine all displayed icons with the new one and shuffle positions
                     const newDisplayedIcons = shuffleArray([...displayedIcons, nextIcon]);
                     setDisplayedIcons(newDisplayedIcons);
+                    generatePositions(newDisplayedIcons.length);
                 }
 
                 setFeedbackIcon(null);
@@ -294,252 +361,210 @@ export default function IconMemoryGame() {
             currentLayer,
             availablePool,
             displayedIcons,
+            generatePositions,
+            shake
         ]
     );
 
-    // Calculate grid layout
-    const iconCount = displayedIcons.length;
-    const columns = iconCount <= 4 ? 2 : iconCount <= 9 ? 3 : 4;
-    const iconSize = Math.min(
-        (SCREEN_WIDTH - 80 - (columns - 1) * 16) / columns,
-        80
-    );
-
-    // Memoized grid style
-    const gridStyle = useMemo(
-        () => ({
-            ...styles.iconGrid,
-            maxWidth: columns * (iconSize + 16),
-        }),
-        [columns, iconSize]
-    );
+    const shakeStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateX: shake.value }]
+        };
+    });
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <StatusBar style="light" />
 
-            {/* Header */}
+            {/* Header matching the design: [Level 1] [PieTimer] [1500 pt] */}
             <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => router.back()}
-                >
-                    <Ionicons name="arrow-back" size={24} color="#fff" />
-                </TouchableOpacity>
+                <View style={styles.headerLeft}>
+                    <Text style={styles.headerLabel}>Level {currentLayer}</Text>
+                </View>
+
                 <View style={styles.headerCenter}>
-                    <Text style={styles.gameTitle}>Icon Memory</Text>
-                    <Text style={styles.layerText}>
-                        Layer {currentLayer} of {TOTAL_LAYERS}
-                    </Text>
+                    <PieTimer remaining={timeRemaining} total={totalTimeLimit} size={32} />
                 </View>
+
                 <View style={styles.headerRight}>
-                    <View style={styles.clickedBadge}>
-                        <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
-                        <Text style={styles.clickedCount}>{clickedIcons.size}</Text>
-                    </View>
+                    <Text style={styles.headerLabel}>{score} pt</Text>
                 </View>
             </View>
-
-            {/* Progress Bar */}
-            <View style={styles.progressWrapper}>
-                <ProgressBar currentLayer={currentLayer} totalLayers={TOTAL_LAYERS} />
-            </View>
-
-            {/* Debug Preview - Clicked Icons */}
-            {status === "PLAYING" && clickedIcons.size > 0 && (
-                <View style={styles.debugContainer}>
-                    <View style={styles.debugHeader}>
-                        <Ionicons name="bug" size={14} color="#f59e0b" />
-                        <Text style={styles.debugTitle}>DEBUG: Clicked Icons ({clickedIcons.size})</Text>
-                    </View>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.debugIconsScroll}
-                    >
-                        {Array.from(clickedIcons).map((iconName, index) => (
-                            <Animated.View
-                                key={iconName}
-                                entering={FadeIn.delay(index * 50)}
-                                style={styles.debugIconItem}
-                            >
-                                <Ionicons
-                                    name={iconName as keyof typeof Ionicons.glyphMap}
-                                    size={20}
-                                    color={COLORS.success}
-                                />
-                            </Animated.View>
-                        ))}
-                    </ScrollView>
-                </View>
-            )}
 
             {/* Game Area */}
             <View style={styles.gameArea}>
                 {status === "PLAYING" && (
                     <Animated.View entering={FadeIn} style={styles.gameContent}>
-                        <Text style={styles.instruction}>
-                            Tap an icon you{" "}
-                            <Text style={styles.instructionHighlight}>haven't</Text> selected
-                            before
-                        </Text>
-
-                        <View style={gridStyle}>
-                            {displayedIcons.map((iconName, index) => (
-                                <IconButton
-                                    key={`${iconName}-${currentLayer}`}
-                                    iconName={iconName}
-                                    onPress={() => handleIconPress(iconName)}
-                                    delay={index * 50}
-                                    isDisabled={isProcessing}
-                                    feedbackState={
-                                        feedbackIcon?.icon === iconName
-                                            ? feedbackIcon.state
-                                            : "none"
+                        {/* Game Box with Image Background */}
+                        <Animated.View style={[styles.gameBox, shakeStyle]}>
+                            {/* Image Background */}
+                            <Animated.View style={styles.bgImageContainer}>
+                                <Image
+                                    source={feedbackIcon?.state === "wrong"
+                                        ? require("../../assets/images/iconbgRed.png")
+                                        : require("../../assets/images/iconbgGreen.png")
                                     }
+                                    style={{ width: "100%", height: "100%" }}
+                                    resizeMode="cover"
                                 />
-                            ))}
-                        </View>
+                            </Animated.View>
 
-                        <View style={styles.hintContainer}>
-                            <Ionicons
-                                name="information-circle-outline"
-                                size={18}
-                                color="#71717a"
-                            />
-                            <Text style={styles.hintText}>
-                                {currentLayer === 1
-                                    ? "Pick any icon to start"
-                                    : `${displayedIcons.length - clickedIcons.size} safe choice${displayedIcons.length - clickedIcons.size !== 1 ? "s" : ""} remaining`}
-                            </Text>
-                        </View>
-                    </Animated.View>
-                )}
+                            {/* Icons Grid on top of background */}
+                            <View style={styles.iconsOverlay}>
+                                {displayedIcons.map((iconName, index) => (
+                                    <IconButton
+                                        key={`${iconName}-${currentLayer}`}
+                                        iconName={iconName}
+                                        onPress={() => handleIconPress(iconName)}
+                                        delay={index * 50}
+                                        isDisabled={isProcessing}
+                                        feedbackState={
+                                            feedbackIcon?.icon === iconName
+                                                ? feedbackIcon.state
+                                                : "none"
+                                        }
+                                        iconColor={ICON_COLORS[index % ICON_COLORS.length]}
+                                        positionX={iconPositions[index]?.x}
+                                        positionY={iconPositions[index]?.y}
+                                    />
+                                ))}
+                            </View>
 
-                {/* Game Over Screen */}
-                {status === "GAME_OVER" && (
-                    <Animated.View
-                        entering={FadeInDown.springify()}
-                        style={styles.endScreen}
-                    >
-                        <View style={styles.endIconContainer}>
-                            <LinearGradient
-                                colors={["rgba(248, 113, 113, 0.2)", "rgba(248, 113, 113, 0.05)"]}
-                                style={styles.endIconGradient}
-                            >
-                                <Ionicons name="close-circle" size={80} color={COLORS.error} />
-                            </LinearGradient>
-                        </View>
-                        <Text style={styles.endTitle}>Game Over!</Text>
-                        <Text style={styles.endSubtitle}>
-                            You repeated an icon on Layer {currentLayer}
-                        </Text>
-                        <View style={styles.statsContainer}>
-                            <View style={styles.statItem}>
-                                <Text style={styles.statValue}>{currentLayer - 1}</Text>
-                                <Text style={styles.statLabel}>Layers Cleared</Text>
-                            </View>
-                            <View style={styles.statDivider} />
-                            <View style={styles.statItem}>
-                                <Text style={styles.statValue}>{clickedIcons.size}</Text>
-                                <Text style={styles.statLabel}>Icons Selected</Text>
-                            </View>
-                        </View>
-                        <View style={styles.endButtons}>
-                            <TouchableOpacity
-                                style={styles.retryButton}
-                                onPress={initializeGame}
-                            >
-                                <Ionicons name="refresh" size={22} color="#fff" />
-                                <Text style={styles.retryButtonText}>Try Again</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.homeButton}
-                                onPress={() => router.back()}
-                            >
-                                <Ionicons name="home" size={22} color="#a1a1aa" />
-                            </TouchableOpacity>
-                        </View>
-                    </Animated.View>
-                )}
+                            {/* Central Status Icon (Check/X) - Visible on feedback */}
+                            {feedbackIcon && (
+                                <Animated.View
+                                    entering={ZoomIn}
+                                    style={styles.statusIconContainer}
+                                >
+                                    <Ionicons
+                                        name={feedbackIcon.state === "correct" ? "checkmark-circle" : "close-circle"}
+                                        size={64}
+                                        color={feedbackIcon.state === "correct" ? "#03B56A" : "#FA0004"}
+                                        style={{
+                                            textShadowColor: 'rgba(0,0,0,0.3)',
+                                            textShadowOffset: { width: 0, height: 2 },
+                                            textShadowRadius: 4
+                                        }}
+                                    />
+                                </Animated.View>
+                            )}
+                        </Animated.View>
 
-                {/* Success Screen */}
-                {status === "SUCCESS" && (
-                    <Animated.View
-                        entering={FadeInDown.springify()}
-                        style={styles.endScreen}
-                    >
-                        <View style={styles.endIconContainer}>
-                            <LinearGradient
-                                colors={["rgba(74, 222, 128, 0.2)", "rgba(74, 222, 128, 0.05)"]}
-                                style={styles.endIconGradient}
-                            >
-                                <Ionicons name="trophy" size={80} color={COLORS.success} />
-                            </LinearGradient>
-                        </View>
-                        <Text style={[styles.endTitle, { color: COLORS.success }]}>
-                            Perfect Memory!
-                        </Text>
-                        <Text style={styles.endSubtitle}>
-                            You completed all {TOTAL_LAYERS} layers without repeating!
-                        </Text>
-                        <View style={styles.statsContainer}>
-                            <View style={styles.statItem}>
-                                <Text style={[styles.statValue, { color: COLORS.success }]}>
-                                    {TOTAL_LAYERS}
-                                </Text>
-                                <Text style={styles.statLabel}>Layers Completed</Text>
-                            </View>
-                            <View style={styles.statDivider} />
-                            <View style={styles.statItem}>
-                                <Text style={[styles.statValue, { color: COLORS.success }]}>
-                                    {clickedIcons.size}
-                                </Text>
-                                <Text style={styles.statLabel}>Unique Icons</Text>
-                            </View>
-                        </View>
-                        <View style={styles.endButtons}>
-                            <TouchableOpacity
-                                style={[styles.retryButton, { backgroundColor: COLORS.success }]}
-                                onPress={initializeGame}
-                            >
-                                <Ionicons name="refresh" size={22} color="#000" />
-                                <Text style={[styles.retryButtonText, { color: "#000" }]}>
-                                    Play Again
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.homeButton}
-                                onPress={() => router.back()}
-                            >
-                                <Ionicons name="home" size={22} color="#a1a1aa" />
-                            </TouchableOpacity>
-                        </View>
                     </Animated.View>
                 )}
             </View>
 
-            {/* Footer Info */}
-            {status === "PLAYING" && (
+            {/* Mascot Feedback at Bottom */}
+            <View style={styles.mascotContainer}>
+                <MascotFeedback
+                    text={
+                        feedbackIcon?.state === "correct"
+                            ? "Nice keep going"
+                            : feedbackIcon?.state === "wrong"
+                                ? "Woah good luck next time."
+                                : "Tap an icon you haven't clicked!"
+                    }
+                />
+            </View>
+
+            {/* Game Over Screen */}
+            {status === "GAME_OVER" && (
                 <Animated.View
-                    entering={SlideInDown.delay(500)}
-                    exiting={FadeOut}
-                    style={styles.footer}
+                    entering={FadeInDown.springify()}
+                    style={styles.endScreen}
                 >
-                    <View style={styles.footerContent}>
-                        <View style={styles.footerItem}>
-                            <Ionicons name="apps" size={18} color={COLORS.primary} />
-                            <Text style={styles.footerText}>
-                                {displayedIcons.length} icons shown
-                            </Text>
+                    <View style={styles.endIconContainer}>
+                        <LinearGradient
+                            colors={["rgba(248, 113, 113, 0.2)", "rgba(248, 113, 113, 0.05)"]}
+                            style={styles.endIconGradient}
+                        >
+                            <Ionicons name="close-circle" size={80} color={COLORS.error} />
+                        </LinearGradient>
+                    </View>
+                    <Text style={styles.endTitle}>Game Over!</Text>
+                    <Text style={styles.endSubtitle}>
+                        You repeated an icon on Layer {currentLayer}
+                    </Text>
+                    <View style={styles.statsContainer}>
+                        <View style={styles.statItem}>
+                            <Text style={styles.statValue}>{currentLayer - 1}</Text>
+                            <Text style={styles.statLabel}>Layers Cleared</Text>
                         </View>
-                        <View style={styles.footerDivider} />
-                        <View style={styles.footerItem}>
-                            <Ionicons name="eye-off" size={18} color="#f59e0b" />
-                            <Text style={styles.footerText}>
-                                {clickedIcons.size} memorized
-                            </Text>
+                        <View style={styles.statDivider} />
+                        <View style={styles.statItem}>
+                            <Text style={styles.statValue}>{clickedIcons.size}</Text>
+                            <Text style={styles.statLabel}>Icons Selected</Text>
                         </View>
+                    </View>
+                    <View style={styles.endButtons}>
+                        <TouchableOpacity
+                            style={styles.retryButton}
+                            onPress={initializeGame}
+                        >
+                            <Ionicons name="refresh" size={22} color="#fff" />
+                            <Text style={styles.retryButtonText}>Try Again</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.homeButton}
+                            onPress={() => router.back()}
+                        >
+                            <Ionicons name="home" size={22} color="#a1a1aa" />
+                        </TouchableOpacity>
+                    </View>
+                </Animated.View>
+            )}
+
+            {/* Success Screen */}
+            {status === "SUCCESS" && (
+                <Animated.View
+                    entering={FadeInDown.springify()}
+                    style={styles.endScreen}
+                >
+                    <View style={styles.endIconContainer}>
+                        <LinearGradient
+                            colors={["rgba(74, 222, 128, 0.2)", "rgba(74, 222, 128, 0.05)"]}
+                            style={styles.endIconGradient}
+                        >
+                            <Ionicons name="trophy" size={80} color={COLORS.success} />
+                        </LinearGradient>
+                    </View>
+                    <Text style={[styles.endTitle, { color: COLORS.success }]}>
+                        Perfect Memory!
+                    </Text>
+                    <Text style={styles.endSubtitle}>
+                        You completed all {TOTAL_LAYERS} layers without repeating!
+                    </Text>
+                    <View style={styles.statsContainer}>
+                        <View style={styles.statItem}>
+                            <Text style={[styles.statValue, { color: COLORS.success }]}>
+                                {TOTAL_LAYERS}
+                            </Text>
+                            <Text style={styles.statLabel}>Layers Completed</Text>
+                        </View>
+                        <View style={styles.statDivider} />
+                        <View style={styles.statItem}>
+                            <Text style={[styles.statValue, { color: COLORS.success }]}>
+                                {clickedIcons.size}
+                            </Text>
+                            <Text style={styles.statLabel}>Unique Icons</Text>
+                        </View>
+                    </View>
+                    <View style={styles.endButtons}>
+                        <TouchableOpacity
+                            style={[styles.retryButton, { backgroundColor: COLORS.success }]}
+                            onPress={initializeGame}
+                        >
+                            <Ionicons name="refresh" size={22} color="#000" />
+                            <Text style={[styles.retryButtonText, { color: "#000" }]}>
+                                Play Again
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.homeButton}
+                            onPress={() => router.back()}
+                        >
+                            <Ionicons name="home" size={22} color="#a1a1aa" />
+                        </TouchableOpacity>
                     </View>
                 </Animated.View>
             )}
@@ -581,10 +606,7 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         marginTop: 2,
     },
-    headerRight: {
-        width: 44,
-        alignItems: "flex-end",
-    },
+
     clickedBadge: {
         flexDirection: "row",
         alignItems: "center",
@@ -758,7 +780,7 @@ const styles = StyleSheet.create({
     retryButton: {
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: COLORS.primary,
+        backgroundColor: '#22c55e',
         paddingHorizontal: 28,
         paddingVertical: 16,
         borderRadius: 28,
@@ -781,7 +803,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         borderWidth: 1,
-        borderColor: "#3f3f46",
+        borderColor: "",
     },
     footer: {
         paddingHorizontal: 20,
@@ -847,5 +869,61 @@ const styles = StyleSheet.create({
         alignItems: "center",
         borderWidth: 1,
         borderColor: "rgba(74, 222, 128, 0.3)",
+    },
+    gameBox: {
+        width: GAME_BOX_SIZE,
+        height: GAME_BOX_SIZE, // Square box
+        backgroundColor: '#000',
+        borderRadius: 24,
+        overflow: 'hidden',
+        position: 'relative',
+        borderWidth: 2,
+        borderColor: '#333',
+        shadowColor: '#000',
+        alignSelf: 'center', // Center the box horizontally
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+        elevation: 10,
+    },
+
+    iconsOverlay: {
+        position: 'relative',
+        zIndex: 10,
+        padding: 20,
+    },
+    headerLeft: {
+        flex: 1,
+        alignItems: 'flex-start',
+    },
+    headerRight: {
+        flex: 1,
+        alignItems: 'flex-end',
+    },
+    headerLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1f2937',
+    },
+    bgImageContainer: {
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        borderRadius: 24,
+        overflow: 'hidden',
+        zIndex: -1,
+    },
+    statusIconContainer: {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        marginLeft: -32,
+        marginTop: -32,
+        zIndex: 20,
+    },
+    mascotContainer: {
+        paddingBottom: 20,
+        width: '100%',
+        alignItems: 'center',
     },
 });

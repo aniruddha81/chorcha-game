@@ -121,7 +121,7 @@ export const Scale: React.FC<ScaleProps> = ({
                 <Animated.View style={[styles.panWrapper, rightPanStyle]}>
                     <View style={styles.panChains}>
                         <View style={styles.chain} />
-                        <View style={styles.chain} />
+                        {/* <View style={styles.chain} /> */}
                     </View>
                     <View
                         style={[
