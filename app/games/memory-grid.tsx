@@ -1,6 +1,7 @@
 import { Grid } from "@/components/Grid";
 import { MascotFeedback } from "@/components/MascotFeedback";
 import { COLORS, LEVELS } from "@/constants/gameConfig";
+import { getFeedbackMessage } from "@/utils/feedbackMessages";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -26,6 +27,8 @@ export default function GameScreen() {
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState<GameStatus>("IDLE");
   const [mascotMessage, setMascotMessage] = useState("");
+  const [correctStreak, setCorrectStreak] = useState(0);
+  const [wrongStreak, setWrongStreak] = useState(0);
 
   const [pattern, setPattern] = useState<number[]>([]);
   const [userSelection, setUserSelection] = useState<number[]>([]);
@@ -38,7 +41,12 @@ export default function GameScreen() {
   // Start Level
   const startLevel = useCallback(() => {
     setStatus("SHOWING_PATTERN");
-    setMascotMessage("Remember the blue tiles");
+    // Only show tutorial message on first level
+    if (currentLevelIndex === 0) {
+      setMascotMessage("Remember the blue tiles");
+    } else {
+      setMascotMessage("");
+    }
     setUserSelection([]);
     setValidatedCells([]);
 
@@ -56,7 +64,12 @@ export default function GameScreen() {
     // Hide Pattern after duration
     setTimeout(() => {
       setStatus("WAITING_INPUT");
-      setMascotMessage("Do you remember them?");
+      // Only show tutorial message on first level
+      if (currentLevelIndex === 0) {
+        setMascotMessage("Do you remember them?");
+      } else {
+        setMascotMessage("");
+      }
     }, currentLevelConfig.showDuration);
   }, [currentLevelConfig]);
 
@@ -111,9 +124,22 @@ export default function GameScreen() {
 
     if (isPerfect) {
       // Success - Add points only if all correct
-      setMascotMessage("Wow, nice.. you are awesome");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setScore((s) => s + currentLevelConfig.level * 100);
+
+      // Update streaks
+      setCorrectStreak((prev) => prev + 1);
+      setWrongStreak(0);
+
+      // Calculate typing duration for success feedback
+      const feedbackMsg =
+        currentLevelIndex > 0
+          ? getFeedbackMessage(true, correctStreak + 1)
+          : "";
+      if (feedbackMsg) setMascotMessage(feedbackMsg);
+      const typingDuration = feedbackMsg.length * 40;
+      const delay = Math.max(1000, typingDuration + 300);
+
       setTimeout(() => {
         if (currentLevelIndex + 1 < LEVELS.length) {
           // Reset grid state immediately before level transition
@@ -129,14 +155,24 @@ export default function GameScreen() {
             { text: "Home", onPress: () => router.back() },
           ]);
         }
-      }, 1000);
+      }, delay);
     } else {
       // Failure - Show correct answer but no points added
-      setMascotMessage("Oh no let me show you again");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setLives((l) => l - 1);
 
-      // Show the correct pattern for 2 seconds then proceed
+      // Update streaks
+      setWrongStreak((prev) => prev + 1);
+      setCorrectStreak(0);
+
+      // Calculate typing duration for failure feedback
+      const feedbackMsg =
+        currentLevelIndex > 0 ? getFeedbackMessage(false, wrongStreak + 1) : "";
+      if (feedbackMsg) setMascotMessage(feedbackMsg);
+      const typingDuration = feedbackMsg.length * 40;
+      const delay = Math.max(2000, typingDuration + 500);
+
+      // Show the correct pattern and mascot feedback then proceed
       setTimeout(() => {
         if (lives - 1 <= 0) {
           setStatus("GAME_OVER");
@@ -165,7 +201,7 @@ export default function GameScreen() {
           setMascotMessage(""); // Clear message
           setStatus("IDLE");
         }
-      }, 2000);
+      }, delay);
     }
   };
 
@@ -204,12 +240,10 @@ export default function GameScreen() {
         </View>
       </View>
 
-      {/* Mascot / Footer - Only show on Level 1 */}
-      {currentLevelConfig.level === 1 && (
-        <View style={styles.mascotContainer}>
-          <MascotFeedback text={mascotMessage} />
-        </View>
-      )}
+      {/* Mascot - Always visible */}
+      <View style={styles.mascotContainer}>
+        <MascotFeedback text={mascotMessage} />
+      </View>
     </SafeAreaView>
   );
 }
