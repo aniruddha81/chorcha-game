@@ -23,51 +23,55 @@ function createLevel(
 
 // Puzzle levels - each one is hand-crafted to be solvable
 export const ZIP_LEVELS: ZipLevelConfig[] = [
-  // Level 1: 4x4 with 4 numbers
-  createLevel(1, 4, 4, [
+  // Level 1: 5x5 with 3 numbers - easy intro
+  createLevel(1, 5, 5, [
     { row: 0, col: 0, num: 1 },
-    { row: 0, col: 3, num: 2 },
-    { row: 3, col: 0, num: 3 },
-    { row: 3, col: 3, num: 4 },
+    { row: 2, col: 2, num: 2 },
+    { row: 4, col: 4, num: 3 },
   ]),
 
-  // Level 2: 3x3 with 3 numbers
-  createLevel(2, 3, 3, [
+  // Level 2: 5x5 with 4 numbers
+  createLevel(2, 5, 5, [
     { row: 0, col: 0, num: 1 },
-    { row: 1, col: 1, num: 2 },
-    { row: 2, col: 2, num: 3 },
+    { row: 0, col: 4, num: 2 },
+    { row: 4, col: 0, num: 3 },
+    { row: 4, col: 4, num: 4 },
   ]),
 
-  // Level 3: 4x3 with 3 numbers
-  createLevel(3, 3, 4, [
+  // Level 3: 5x5 with 4 numbers - diagonal pattern
+  createLevel(3, 5, 5, [
     { row: 0, col: 0, num: 1 },
-    { row: 2, col: 3, num: 2 },
-    { row: 0, col: 3, num: 3 },
-  ]),
-
-  // Level 4: 4x4 with 4 numbers - slightly more complex
-  createLevel(4, 4, 4, [
-    { row: 0, col: 0, num: 1 },
-    { row: 1, col: 2, num: 2 },
+    { row: 1, col: 3, num: 2 },
     { row: 3, col: 1, num: 3 },
-    { row: 3, col: 3, num: 4 },
+    { row: 4, col: 4, num: 4 },
   ]),
 
-  // Level 5: 4x4 with 5 numbers
-  createLevel(5, 4, 4, [
+  // Level 4: 5x5 with 5 numbers - more waypoints
+  createLevel(4, 5, 5, [
     { row: 0, col: 0, num: 1 },
-    { row: 0, col: 3, num: 2 },
+    { row: 0, col: 4, num: 2 },
     { row: 2, col: 2, num: 3 },
-    { row: 3, col: 0, num: 4 },
-    { row: 3, col: 3, num: 5 },
+    { row: 4, col: 0, num: 4 },
+    { row: 4, col: 4, num: 5 },
   ]),
 
-  // Level 6: 5x4 with 4 numbers
-  createLevel(6, 4, 5, [
+  // Level 5: 5x5 with 5 numbers - asymmetric
+  createLevel(5, 5, 5, [
     { row: 0, col: 0, num: 1 },
-    { row: 1, col: 4, num: 2 },
-    { row: 3, col: 2, num: 3 },
+    { row: 1, col: 3, num: 2 },
+    { row: 2, col: 1, num: 3 },
     { row: 3, col: 4, num: 4 },
+    { row: 4, col: 2, num: 5 },
+  ]),
+
+  // Level 6: 5x5 with 6 numbers - challenging
+  createLevel(6, 5, 5, [
+    { row: 0, col: 0, num: 1 },
+    { row: 0, col: 4, num: 2 },
+    { row: 2, col: 2, num: 3 },
+    { row: 3, col: 1, num: 4 },
+    { row: 4, col: 3, num: 5 },
+    { row: 4, col: 4, num: 6 },
   ]),
 
   // Level 7: 5x5 with 5 numbers

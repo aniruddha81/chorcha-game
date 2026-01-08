@@ -1,5 +1,4 @@
 import { AnimatedNumberBadge } from "@/components/AnimatedNumberBadge";
-import { LevelCompleteAnimation } from "@/components/LevelCompleteAnimation";
 import { MascotFeedback } from "@/components/MascotFeedback";
 import { ZipCell } from "@/components/ZipCell";
 import { ZIP_COLORS, ZIP_LEVELS } from "@/constants/zipGameConfig";
@@ -11,9 +10,9 @@ import {
    Alert,
    Dimensions,
    Platform,
+   Pressable,
    StyleSheet,
    Text,
-   TouchableOpacity,
    View
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -23,6 +22,11 @@ import Animated, {
    runOnJS,
    SlideInDown,
    SlideOutDown,
+   useAnimatedStyle,
+   useSharedValue,
+   withSequence,
+   withSpring,
+   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
@@ -362,8 +366,53 @@ export default function ZipGameScreen() {
       return null;
    }, [getNextRequiredNumber, currentLevel]);
 
+   // Animated score values
+   const scoreScale = useSharedValue(1);
+   const bonusOpacity = useSharedValue(0);
+   const bonusTranslateY = useSharedValue(10);
+
+   // Animate score on level complete
+   useEffect(() => {
+      if (status === "LEVEL_COMPLETE") {
+         bonusOpacity.value = withSequence(
+            withTiming(1, { duration: 200 }),
+            withTiming(1, { duration: 800 }),
+         );
+         bonusTranslateY.value = withSequence(
+            withTiming(0, { duration: 200 }),
+            withTiming(-5, { duration: 300 }),
+         );
+         scoreScale.value = withSequence(
+            withSpring(1.15, { damping: 10 }),
+            withSpring(1, { damping: 10 })
+         );
+      } else {
+         bonusOpacity.value = 0;
+         bonusTranslateY.value = 10;
+      }
+   }, [status]);
+
+   const scoreAnimatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scoreScale.value }],
+   }));
+
+   const bonusAnimatedStyle = useAnimatedStyle(() => ({
+      opacity: bonusOpacity.value,
+      transform: [{ translateY: bonusTranslateY.value }],
+   }));
+
+   // Handle tap anywhere to continue
+   const handleScreenTap = useCallback(() => {
+      if (status === "LEVEL_COMPLETE") {
+         nextLevel();
+      }
+   }, [status, nextLevel]);
+
    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <Pressable
+         style={[styles.container, { paddingTop: insets.top }]}
+         onPress={handleScreenTap}
+      >
          <StatusBar style="dark" />
 
 
@@ -399,15 +448,15 @@ export default function ZipGameScreen() {
                      <Text style={styles.headerText}>Level {currentLevel.level}</Text>
                   </View>
                   <View style={styles.scoreContainer}>
-                     <Text
+                     <Animated.Text
                         style={[
                            styles.scoreBonusText,
-                           { opacity: status === "LEVEL_COMPLETE" ? 1 : 0 }
+                           bonusAnimatedStyle
                         ]}
                      >
                         +{currentLevel.level * 100}
-                     </Text>
-                     <Text style={styles.headerText}>{score} pt</Text>
+                     </Animated.Text>
+                     <Animated.Text style={[styles.headerText, scoreAnimatedStyle]}>{score} pt</Animated.Text>
                   </View>
                </Animated.View>
 
@@ -537,24 +586,16 @@ export default function ZipGameScreen() {
             </Text>
          </Animated.View>
 
-         {/* Controls */}
-         <Animated.View entering={SlideInDown.delay(500)} style={styles.footer}>
-            <TouchableOpacity
-               style={styles.resetButton}
-               onPress={resetLevel}
-               activeOpacity={0.7}
-            >
-               <Text style={styles.resetButtonText}>Reset</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-               style={styles.backButton}
-               onPress={() => router.back()}
-               activeOpacity={0.7}
-            >
-               <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
-         </Animated.View>
+         {/* Tap to continue hint */}
+         <Animated.Text
+            entering={FadeIn.delay(300)}
+            style={[
+               styles.tapHint,
+               { opacity: status === "LEVEL_COMPLETE" ? 1 : 0 }
+            ]}
+         >
+            Tap anywhere to continue
+         </Animated.Text>
 
          {/* Mascot Overlay */}
          {mascotMessage ? (
@@ -567,12 +608,7 @@ export default function ZipGameScreen() {
             </Animated.View>
          ) : null}
 
-         {/* Level Complete Animation */}
-         <LevelCompleteAnimation
-            isVisible={status === "LEVEL_COMPLETE"}
-            onAnimationComplete={nextLevel}
-         />
-      </View>
+      </Pressable>
    );
 }
 
@@ -682,38 +718,12 @@ const styles = StyleSheet.create({
       color: "#71717a",
       fontWeight: "500",
    },
-   footer: {
-      flexDirection: "row",
-      paddingHorizontal: 24,
-      paddingTop: 8,
-      paddingBottom: 32,
-      gap: 12,
-   },
-   resetButton: {
-      flex: 1,
-      backgroundColor: "#fff",
-      paddingVertical: 16,
-      borderRadius: 16,
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: "#e4e4e7",
-   },
-   resetButtonText: {
-      color: "#000",
-      fontSize: 18,
-      fontWeight: "600",
-   },
-   backButton: {
-      flex: 1,
-      backgroundColor: "transparent",
-      paddingVertical: 16,
-      borderRadius: 16,
-      alignItems: "center",
-   },
-   backButtonText: {
-      color: "#71717a",
-      fontSize: 18,
-      fontWeight: "600",
+   tapHint: {
+      textAlign: 'center',
+      color: '#71717a',
+      fontSize: 14,
+      marginTop: 16,
+      marginBottom: 24,
    },
    mascotOverlay: {
       position: "absolute",
