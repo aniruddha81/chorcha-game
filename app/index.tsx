@@ -55,15 +55,31 @@ const Index = () => {
           />
 
           <GameCard
+
+            title="Zip Puzzle"
+            description="Draw a path connecting all numbers in order."
+            icon="git-network"
+            color="#f59e0b"
+            onPress={() => router.push("./games/zip-puzzle")}
             title="Icon Memory"
             description="Never click the same icon twice. Test your recall!"
             icon="shapes"
             color="#f59e0b"
             onPress={() => router.push("./games/icon-memory")}
+
             delay={1000}
           />
 
           <GameCard
+
+            title="Sentence Complete"
+            description="Fill in the blanks and master vocabulary."
+            icon="text"
+            color="#a855f7"
+            onPress={() => router.push("./games/sentence-complete")}
+            delay={1200}
+          />
+
             title="Weight Balance"
             description="Balance the scale using fractional weight blocks."
             icon="scale"
