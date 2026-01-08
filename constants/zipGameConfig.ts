@@ -110,15 +110,17 @@ export const ZIP_LEVELS: ZipLevelConfig[] = [
 ];
 
 export const ZIP_COLORS = {
-  background: "#09090b", // zinc-950
-  card: "#18181b", // zinc-900
-  cellEmpty: "#27272a", // zinc-800
-  cellFilled: "#3f3f46", // zinc-700
-  cellNumbered: "#52525b", // zinc-600
-  path: "#f59e0b", // amber-500
-  pathGlow: "#fbbf24", // amber-400
-  numberText: "#fafafa", // zinc-50
-  success: "#10b981", // emerald-500
-  error: "#ef4444", // red-500
-  accent: "#f59e0b", // amber-500
+  background: "#F2F2F2",
+  card: "#FFFFFF",
+  cellEmpty: "transparent",
+  cellFilled: "transparent",
+  cellNumbered: "transparent",
+  path: "#00B87C", // Green
+  pathGlow: "#00E096",
+  numberText: "#FFFFFF",
+  success: "#10b981",
+  error: "#ef4444",
+  accent: "#00B87C", // Green
+  gridLine: "#000000",
+  text: "#000000",
 };

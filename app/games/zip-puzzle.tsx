@@ -1,10 +1,12 @@
+import { AnimatedNumberBadge } from "@/components/AnimatedNumberBadge";
 import { LevelCompleteAnimation } from "@/components/LevelCompleteAnimation";
+import { MascotFeedback } from "@/components/MascotFeedback";
 import { ZipCell } from "@/components/ZipCell";
 import { ZIP_COLORS, ZIP_LEVELS } from "@/constants/zipGameConfig";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
    Alert,
    Dimensions,
@@ -19,7 +21,8 @@ import Animated, {
    FadeIn,
    FadeInDown,
    runOnJS,
-   SlideInDown
+   SlideInDown,
+   SlideOutDown,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
@@ -35,6 +38,7 @@ export default function ZipGameScreen() {
    const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
    const [score, setScore] = useState(0);
    const [status, setStatus] = useState<GameStatus>("PLAYING");
+   const [mascotMessage, setMascotMessage] = useState("");
 
    // Path state: array of cell indices the player has drawn through
    const [path, setPath] = useState<number[]>([]);
@@ -75,6 +79,23 @@ export default function ZipGameScreen() {
       });
       return max;
    }, [currentLevel]);
+
+   // Initial Mascot Message
+   useEffect(() => {
+      const timer = setTimeout(() => {
+         if (status === "PLAYING" && path.length === 0) {
+            setMascotMessage(`Connect 1 to ${maxNumber} to fill the grid!`);
+         }
+      }, 600);
+      return () => clearTimeout(timer);
+   }, [currentLevelIndex, maxNumber, status]);
+
+   // Dismiss mascot on interaction
+   const dismissMascot = useCallback(() => {
+      if (mascotMessage) {
+         setMascotMessage("");
+      }
+   }, [mascotMessage]);
 
    // Find the next required numbered cell
    const getNextRequiredNumber = useCallback((): number => {
@@ -185,15 +206,18 @@ export default function ZipGameScreen() {
             // Backtrack to this cell
             setPath(path.slice(0, indexInPath + 1));
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            dismissMascot();
          }
       },
-      [path]
+      [path, dismissMascot]
    );
 
    // Add cell to path
    const addToPath = useCallback(
       (cellIndex: number) => {
          if (status !== "PLAYING") return;
+
+         dismissMascot();
 
          // Check for backtracking
          if (path.includes(cellIndex)) {
@@ -231,6 +255,7 @@ export default function ZipGameScreen() {
                if (valid && lastNumber === maxNumber) {
                   setStatus("LEVEL_COMPLETE");
                   setScore((s) => s + currentLevel.level * 100);
+                  setMascotMessage("Awesome! You completed the level!");
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                }
             }
@@ -244,6 +269,7 @@ export default function ZipGameScreen() {
          totalCells,
          currentLevel,
          maxNumber,
+         dismissMascot,
       ]
    );
 
@@ -277,6 +303,7 @@ export default function ZipGameScreen() {
    const resetLevel = () => {
       setPath([]);
       setStatus("PLAYING");
+      setMascotMessage(`Connect 1 to ${maxNumber} to fill the grid!`);
    };
 
    // Go to next level
@@ -285,6 +312,7 @@ export default function ZipGameScreen() {
          setCurrentLevelIndex((prev) => prev + 1);
          setPath([]);
          setStatus("PLAYING");
+         setMascotMessage("");
       } else {
          Alert.alert("🎉 Victory!", `You completed all ${ZIP_LEVELS.length} levels!\nFinal Score: ${score}`, [
             {
@@ -293,6 +321,7 @@ export default function ZipGameScreen() {
                   setPath([]);
                   setScore(0);
                   setStatus("PLAYING");
+                  setMascotMessage("");
                }
             },
             { text: "Home", onPress: () => router.back() },
@@ -335,19 +364,9 @@ export default function ZipGameScreen() {
 
    return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-         <StatusBar style="light" />
+         <StatusBar style="dark" />
 
-         {/* Header */}
-         <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
-            <View>
-               <Text style={styles.levelLabel}>LEVEL</Text>
-               <Text style={styles.levelText}>{currentLevel.level}</Text>
-            </View>
-            <View style={styles.statsContainer}>
-               <Text style={styles.scoreLabel}>SCORE</Text>
-               <Text style={styles.scoreText}>{score}</Text>
-            </View>
-         </Animated.View>
+
 
          {/* Instructions */}
          <Animated.View entering={FadeIn.delay(300)} style={styles.instructionContainer}>
@@ -363,13 +382,42 @@ export default function ZipGameScreen() {
                entering={FadeInDown.delay(200).springify()}
                style={styles.gridWrapper}
             >
+               {/* Header moved here */}
+               <Animated.View
+                  entering={FadeInDown.delay(100)}
+                  style={[
+                     styles.header,
+                     {
+                        width: gridWidth,
+                        paddingHorizontal: 0,
+                        paddingTop: 0,
+                        paddingBottom: 8
+                     }
+                  ]}
+               >
+                  <View style={styles.levelContainer}>
+                     <Text style={styles.headerText}>Level {currentLevel.level}</Text>
+                  </View>
+                  <View style={styles.scoreContainer}>
+                     <Text
+                        style={[
+                           styles.scoreBonusText,
+                           { opacity: status === "LEVEL_COMPLETE" ? 1 : 0 }
+                        ]}
+                     >
+                        +{currentLevel.level * 100}
+                     </Text>
+                     <Text style={styles.headerText}>{score} pt</Text>
+                  </View>
+               </Animated.View>
+
                <View
                   ref={gridRef}
                   style={[
                      styles.gridContainer,
                      {
-                        width: gridWidth + 16,
-                        height: gridHeight + 16,
+                        width: gridWidth + 2,
+                        height: gridHeight + 2,
                      },
                   ]}
                   onLayout={() => {
@@ -380,8 +428,8 @@ export default function ZipGameScreen() {
                            if (element.getBoundingClientRect) {
                               const rect = element.getBoundingClientRect();
                               setGridLayout({
-                                 x: rect.left + 8,
-                                 y: rect.top + 8,
+                                 x: rect.left + 1, // Offset for border
+                                 y: rect.top + 1,  // Offset for border
                                  width: gridWidth,
                                  height: gridHeight,
                               });
@@ -390,8 +438,8 @@ export default function ZipGameScreen() {
                            // Native: use measureInWindow
                            gridRef.current.measureInWindow((x, y) => {
                               setGridLayout({
-                                 x: x + 8,
-                                 y: y + 8,
+                                 x: x + 1, // Offset for border
+                                 y: y + 1, // Offset for border
                                  width: gridWidth,
                                  height: gridHeight,
                               });
@@ -412,8 +460,8 @@ export default function ZipGameScreen() {
                                     key={cellIndex}
                                     index={cellIndex}
                                     number={cellNumber}
-                                    isInPath={path.includes(cellIndex)}
-                                    isCurrentCell={path[path.length - 1] === cellIndex}
+                                    cols={currentLevel.cols}
+                                    rows={currentLevel.rows}
                                     isNextTarget={cellIndex === nextTargetCell && !path.includes(cellIndex)}
                                     cellSize={cellSize}
                                  />
@@ -430,12 +478,12 @@ export default function ZipGameScreen() {
                         {pathString && (
                            <Path
                               d={pathString}
-                              stroke="#ffffff"
-                              strokeWidth={cellSize * 0.25}
+                              stroke={ZIP_COLORS.path}
+                              strokeWidth={cellSize * 0.28}
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               fill="none"
-                              opacity={0.85}
+                              opacity={1}
                            />
                         )}
                         {/* Current position indicator - only show if current cell has no number */}
@@ -444,8 +492,8 @@ export default function ZipGameScreen() {
                               cx={getCellCenter(path[path.length - 1]).x}
                               cy={getCellCenter(path[path.length - 1]).y}
                               r={cellSize * 0.2}
-                              fill="#ffffff"
-                              opacity={0.95}
+                              fill={ZIP_COLORS.path}
+                              opacity={1}
                            />
                         )}
                      </Svg>
@@ -457,32 +505,14 @@ export default function ZipGameScreen() {
                         const center = getCellCenter(cellIndex);
                         const isSelected = path.includes(cellIndex);
                         return (
-                           <View
+                           <AnimatedNumberBadge
                               key={cellIndex}
-                              style={[
-                                 styles.numberBadge,
-                                 {
-                                    left: center.x - cellSize * 0.35,
-                                    top: center.y - cellSize * 0.35,
-                                    width: cellSize * 0.7,
-                                    height: cellSize * 0.7,
-                                    borderRadius: cellSize * 0.35,
-                                    backgroundColor: isSelected ? "#ffffff" : "transparent",
-                                 },
-                              ]}
-                           >
-                              <Text
-                                 style={[
-                                    styles.numberBadgeText,
-                                    {
-                                       fontSize: cellSize * 0.38,
-                                       color: isSelected ? "#1a1a1a" : "#fafafa",
-                                    },
-                                 ]}
-                              >
-                                 {num}
-                              </Text>
-                           </View>
+                              num={num}
+                              isSelected={isSelected}
+                              cellSize={cellSize}
+                              centerX={center.x}
+                              centerY={center.y}
+                           />
                         );
                      })}
                   </View>
@@ -526,6 +556,17 @@ export default function ZipGameScreen() {
             </TouchableOpacity>
          </Animated.View>
 
+         {/* Mascot Overlay */}
+         {mascotMessage ? (
+            <Animated.View
+               entering={SlideInDown.duration(400).springify().damping(18)}
+               exiting={SlideOutDown.duration(300)}
+               style={styles.mascotOverlay}
+            >
+               <MascotFeedback text={mascotMessage} />
+            </Animated.View>
+         ) : null}
+
          {/* Level Complete Animation */}
          <LevelCompleteAnimation
             isVisible={status === "LEVEL_COMPLETE"}
@@ -543,39 +584,31 @@ const styles = StyleSheet.create({
    header: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "center",
+      alignItems: "flex-end",
       paddingHorizontal: 24,
       paddingTop: 16,
-      paddingBottom: 8,
+      paddingBottom: 24,
    },
-   levelLabel: {
-      fontSize: 12,
-      fontWeight: "600",
-      color: ZIP_COLORS.accent,
-      letterSpacing: 2,
+   levelContainer: {},
+   headerText: {
+      fontSize: 24,
+      fontWeight: "500",
+      color: "#000000",
+      fontFamily: Platform.select({ ios: "System", android: "Roboto" }),
    },
-   levelText: {
-      fontSize: 36,
-      fontWeight: "800",
-      color: "#fff",
-   },
-   statsContainer: {
+   scoreContainer: {
       alignItems: "flex-end",
    },
-   scoreLabel: {
-      fontSize: 12,
+   scoreBonusText: {
+      fontSize: 16,
+      color: ZIP_COLORS.success,
       fontWeight: "600",
-      color: "#71717a",
-      letterSpacing: 2,
-   },
-   scoreText: {
-      fontSize: 28,
-      fontWeight: "700",
-      color: ZIP_COLORS.accent,
+      marginBottom: 2,
    },
    instructionContainer: {
       paddingHorizontal: 24,
       paddingVertical: 12,
+      display: "none", // Hide instructions to match clean design
    },
    instructionText: {
       fontSize: 16,
@@ -593,33 +626,31 @@ const styles = StyleSheet.create({
    },
    gridContainer: {
       backgroundColor: ZIP_COLORS.card,
-      borderRadius: 20,
-      padding: 8,
+      borderRadius: 24,
+      padding: 0, // Remove padding so grid lines touch edges? No, we want grid inside.
+      // Actually, if we want grid lines to look like the image (contained within), we probably want padding or overflow hidden.
+      // The ZipCell handles *internal* borders.
+      // We need a border around the whole thing.
+      borderWidth: 1,
+      borderColor: ZIP_COLORS.gridLine,
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3,
-      shadowRadius: 16,
-      elevation: 10,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 5,
+      overflow: 'hidden', // To clip the content to rounded corners
    },
    pathOverlay: {
       position: "absolute",
-      top: 8,
-      left: 8,
+      top: 0,
+      left: 0,
       zIndex: 10,
    },
    numberBadgesLayer: {
       position: "absolute",
-      top: 8,
-      left: 8,
+      top: 0,
+      left: 0,
       zIndex: 20,
-   },
-   numberBadge: {
-      position: "absolute",
-      justifyContent: "center",
-      alignItems: "center",
-   },
-   numberBadgeText: {
-      fontWeight: "900",
    },
    grid: {
       zIndex: 1,
@@ -631,11 +662,12 @@ const styles = StyleSheet.create({
       paddingHorizontal: 32,
       paddingVertical: 16,
       alignItems: "center",
+      opacity: 0, // Hide progress bar for now, as it's not in the design image
    },
    progressBar: {
       width: "100%",
       height: 6,
-      backgroundColor: ZIP_COLORS.cellEmpty,
+      backgroundColor: "#E4E4E7",
       borderRadius: 3,
       overflow: "hidden",
       marginBottom: 8,
@@ -659,31 +691,35 @@ const styles = StyleSheet.create({
    },
    resetButton: {
       flex: 1,
-      backgroundColor: ZIP_COLORS.accent,
+      backgroundColor: "#fff",
       paddingVertical: 16,
       borderRadius: 16,
       alignItems: "center",
-      shadowColor: ZIP_COLORS.accent,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 5,
+      borderWidth: 1,
+      borderColor: "#e4e4e7",
    },
    resetButtonText: {
       color: "#000",
       fontSize: 18,
-      fontWeight: "700",
+      fontWeight: "600",
    },
    backButton: {
       flex: 1,
-      backgroundColor: ZIP_COLORS.cellEmpty,
+      backgroundColor: "transparent",
       paddingVertical: 16,
       borderRadius: 16,
       alignItems: "center",
    },
    backButtonText: {
-      color: "#a1a1aa",
+      color: "#71717a",
       fontSize: 18,
       fontWeight: "600",
+   },
+   mascotOverlay: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      zIndex: 2000,
    },
 });
