@@ -13,7 +13,7 @@ export const LEVELS: LevelConfig[] = [
     rows: 3,
     cols: 3,
     activeCells: 3,
-    showDuration: 1500,
+    showDuration: 4000,
     gridSize: 300,
   },
   {
@@ -91,10 +91,10 @@ export const LEVELS: LevelConfig[] = [
 ];
 
 export const COLORS = {
-  background: "#09090b", // zinc-950
-  card: "#18181b", // zinc-900
+  background: "#f0f0f0", 
+  card: "#7b7b87", // zinc-900
   primary: "#22d3ee", // cyan-400
   success: "#4ade80", // green-400
   error: "#f87171", // red-400
-  inactive: "#27272a", // zinc-800
+  inactive: "#D9D9D9", // zinc-800
 };

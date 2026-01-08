@@ -1,4 +1,5 @@
-import { COLORS } from "@/constants/gameConfig";
+import { MascotFeedback } from "@/components/MascotFeedback";
+import { PieTimer } from "@/components/PieTimer";
 import { WORD_PAIRS } from "@/constants/wordPairs";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -8,7 +9,7 @@ import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
-  FadeIn,
+  FadeInUp,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -18,17 +19,19 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TIME_LIMIT = 60;
-const BASE_SCORE = 100;
+const BASE_SCORE = 500;
+const PENALTY = 300;
 
 export default function VocabularyMatchGame() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const [score, setScore] = useState(0);
+  const [lastAdded, setLastAdded] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
-  const [lives, setLives] = useState(3);
-  const [isActive, setIsActive] = useState(false);
-  const [streak, setStreak] = useState(0);
+  const [isActive, setIsActive] = useState(true);
+  const [questionNumber, setQuestionNumber] = useState(0);
+  const [mascotMessage, setMascotMessage] = useState("");
   const [hasPlayedAudio, setHasPlayedAudio] = useState(false);
 
   // Current Round Data
@@ -68,36 +71,32 @@ export default function VocabularyMatchGame() {
     setHasPlayedAudio(false);
   }, []);
 
-  const startGame = () => {
-    setScore(0);
-    setLives(3);
-    setTimeLeft(TIME_LIMIT);
-    setIsActive(true);
-    setStreak(0);
-    generateRound();
-  };
-
   useEffect(() => {
-    startGame();
+    generateRound();
   }, []);
 
   useEffect(() => {
-    if (!isActive) return;
-    if (timeLeft <= 0 || lives <= 0) {
+    if (timeLeft <= 0) {
       setIsActive(false);
-      Alert.alert("Game Over", `Score: ${score}\nBest Streak: ${streak}`, [
-        { text: "Try Again", onPress: startGame },
-        { text: "Menu", onPress: () => router.back() },
-      ]);
+      // Show game over alert
+      setTimeout(() => {
+        Alert.alert("Time's Up!", `Game Over! Your final score: ${score}`, [
+          {
+            text: "Play Again",
+            onPress: () => router.replace("/games/vocabulary-match"),
+          },
+          { text: "Home", onPress: () => router.back() },
+        ]);
+      }, 100);
       return;
     }
+    if (!isActive) return;
 
     const timer = setInterval(() => {
-      setTimeLeft((t) => t - 1);
+      setTimeLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
-
     return () => clearInterval(timer);
-  }, [isActive, timeLeft, lives]);
+  }, [timeLeft, isActive, score, router]);
 
   const playAudio = () => {
     if (!isActive) return;
@@ -122,20 +121,36 @@ export default function VocabularyMatchGame() {
   const handleGuess = (userSaysMatch: boolean) => {
     if (!isActive || !hasPlayedAudio) return;
 
-    if (userSaysMatch === isMatch) {
-      // Correct
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const streakBonus = Math.floor(streak / 5) * 50;
-      setScore((s) => s + BASE_SCORE + streakBonus);
-      setStreak((s) => s + 1);
-      generateRound();
+    const isCorrect = userSaysMatch === isMatch;
+
+    if (isCorrect) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setScore((s) => s + BASE_SCORE);
+      setLastAdded(BASE_SCORE);
+
+      // Update mascot message for first 2 questions
+      if (questionNumber < 2) {
+        setMascotMessage("Wow you got it fast!");
+      }
     } else {
-      // Wrong
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setLives((l) => l - 1);
-      setStreak(0);
-      generateRound();
+
+      // Deduct 300 points only if current score is greater than 300
+      if (score > PENALTY) {
+        setScore((s) => s - PENALTY);
+        setLastAdded(-PENALTY);
+      } else {
+        setLastAdded(0); // Show 0 if score is too low to deduct
+      }
+
+      // Update mascot message for first 2 questions
+      if (questionNumber < 2) {
+        setMascotMessage("Oops! Listen carefully!");
+      }
     }
+
+    setQuestionNumber((prev) => prev + 1);
+    generateRound();
   };
 
   const micAnimatedStyle = useAnimatedStyle(() => {
@@ -146,71 +161,78 @@ export default function VocabularyMatchGame() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Vocabulary Match</Text>
-          <Text style={styles.subText}>
-            {timeLeft}s | Lives: {lives}
-          </Text>
-        </View>
-        <View style={styles.stats}>
-          <Text style={styles.scoreText}>{score}</Text>
-          <Text style={styles.streakText}>Streak: {streak}</Text>
+        <Text style={styles.levelText}>Level 1</Text>
+
+        <PieTimer remaining={timeLeft} total={TIME_LIMIT} />
+
+        <View style={styles.scoreContainer}>
+          {lastAdded !== null && (
+            <Animated.Text
+              key={`points-${score}-${lastAdded}`}
+              entering={FadeInUp}
+              style={[
+                styles.pointsAdded,
+                { color: lastAdded > 0 ? "#50C878" : "#EF4444" },
+              ]}
+            >
+              {lastAdded > 0 ? `+${lastAdded}` : lastAdded}
+            </Animated.Text>
+          )}
+          <Text style={styles.totalPoints}>{score} pt</Text>
         </View>
       </View>
 
       {/* Game Area */}
       <View style={styles.gameArea}>
-        <Text style={styles.instruction}>
-          {hasPlayedAudio
-            ? "Does the audio match the image?"
-            : "Tap the mic to hear the word"}
-        </Text>
-
-        {/* Image Display */}
         <Animated.View
-          key={`emoji-${score}-${displayedWord}`}
-          entering={ZoomIn.springify()}
-          style={styles.imageContainer}
+          key={`card-${score}-${displayedWord}`}
+          entering={ZoomIn}
+          style={styles.card}
         >
+          {/* Emoji Display */}
           <Text style={styles.emoji}>{displayedEmoji}</Text>
-          <Text style={styles.wordLabel}>{displayedWord.toUpperCase()}</Text>
-        </Animated.View>
 
-        {/* Microphone Button */}
-        <Animated.View style={micAnimatedStyle}>
-          <TouchableOpacity
-            style={[styles.micButton, !hasPlayedAudio && styles.micButtonPulse]}
-            onPress={playAudio}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="mic" size={64} color="#fff" />
-          </TouchableOpacity>
+          {/* Audio Button */}
+          <Animated.View style={micAnimatedStyle}>
+            <TouchableOpacity
+              style={styles.micButton}
+              onPress={playAudio}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="volume-high" size={32} color="#50C878" />
+            </TouchableOpacity>
+          </Animated.View>
         </Animated.View>
       </View>
 
       {/* Controls */}
-      {hasPlayedAudio && (
-        <Animated.View entering={FadeIn} style={styles.controls}>
-          <TouchableOpacity
-            style={[styles.button, styles.noButton]}
-            onPress={() => handleGuess(false)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.buttonText}>NO</Text>
-          </TouchableOpacity>
+      <View style={styles.controls}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.noButton]}
+          onPress={() => handleGuess(false)}
+          disabled={!hasPlayedAudio}
+        >
+          <Text style={styles.buttonText}>No</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.button, styles.yesButton]}
-            onPress={() => handleGuess(true)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.buttonText}>YES</Text>
-          </TouchableOpacity>
-        </Animated.View>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.yesButton]}
+          onPress={() => handleGuess(true)}
+          disabled={!hasPlayedAudio}
+        >
+          <Text style={styles.buttonText}>Yes</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Mascot - Only show for first 2 questions */}
+      {questionNumber < 2 && (
+        <View style={styles.mascotSpace}>
+          <MascotFeedback text={mascotMessage} />
+        </View>
       )}
     </View>
   );
@@ -219,111 +241,98 @@ export default function VocabularyMatchGame() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: "#F2F2F2",
   },
   header: {
-    padding: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 25,
+    height: 60,
   },
-  title: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
+  levelText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#666",
   },
-  subText: {
-    color: "#a1a1aa",
-    marginTop: 4,
-  },
-  stats: {
+  scoreContainer: {
     alignItems: "flex-end",
+    minWidth: 80,
   },
-  scoreText: {
-    color: COLORS.primary,
-    fontSize: 28,
+  pointsAdded: {
+    fontSize: 16,
     fontWeight: "bold",
   },
-  streakText: {
-    color: COLORS.success,
-    fontSize: 14,
-    fontWeight: "bold",
+  totalPoints: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#333",
+    marginTop: -4,
   },
   gameArea: {
-    flex: 1,
+    flex: 2,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
-    gap: 40,
+    paddingHorizontal: 15,
   },
-  instruction: {
-    color: "#a1a1aa",
-    fontSize: 18,
-    textAlign: "center",
-  },
-  micButton: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  micButtonPulse: {
-    shadowOpacity: 1,
-    shadowRadius: 30,
-  },
-  imageContainer: {
-    alignItems: "center",
-    backgroundColor: COLORS.card,
-    padding: 40,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: "#333",
-    minWidth: 250,
-  },
-  emoji: {
-    fontSize: 120,
-    marginBottom: 20,
-  },
-  wordLabel: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
-    letterSpacing: 2,
-  },
-  controls: {
-    flexDirection: "row",
-    padding: 20,
-    paddingBottom: 40,
-    gap: 20,
-    height: 140,
-  },
-  button: {
-    flex: 1,
-    borderRadius: 24,
+  card: {
+    width: "100%",
+    maxWidth: 400,
+    backgroundColor: "#FFFFFF",
+    aspectRatio: 1,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    gap: 30,
+  },
+  emoji: {
+    fontSize: 140,
+  },
+  micButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#F0F0F0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#E0E0E0",
+  },
+  controls: {
+    flexDirection: "row",
+    paddingHorizontal: 25,
+    gap: 20,
+    marginBottom: 20,
+  },
+  actionButton: {
+    flex: 1,
+    height: 75,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D0D0D0",
   },
   noButton: {
-    backgroundColor: COLORS.error,
+    backgroundColor: "#E0E0E0",
   },
   yesButton: {
-    backgroundColor: COLORS.success,
+    backgroundColor: "#50C878",
+    borderColor: "#45AD68",
   },
   buttonText: {
-    color: "#fff",
     fontSize: 32,
-    fontWeight: "900",
+    color: "#444",
+    fontWeight: "500",
+  },
+  mascotSpace: {
+    flex: 1.5,
   },
 });
