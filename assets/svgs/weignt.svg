@@ -1,0 +1,56 @@
+<svg
+  width="220"
+  height="260"
+  viewBox="0 0 220 260"
+  xmlns="http://www.w3.org/2000/svg"
+>
+
+  <!-- Handle back (centered) -->
+  <path
+    d="M85 20
+       a25 25 0 0 1 50 0
+       v30
+       q0 10 -10 10
+       h-30
+       q-10 0 -10 -10
+       z"
+    fill="#6F7F86"
+  />
+
+  <!-- Handle front (centered) -->
+  <path
+    d="M95 20
+       a20 20 0 0 1 40 0
+       v30
+       q0 10 -10 10
+       h-20
+       q-10 0 -10 -10
+       z"
+    fill="#55656C"
+  />
+
+  <!-- Body shadow -->
+  <path
+    d="M55 60
+       h130
+       l15 155
+       q1 5 -4 5
+       h-122
+       q-5 0 -4 -5
+       z"
+    fill="#8F9DA8"
+  />
+
+  <!-- Main body -->
+  <path
+    d="M35 60
+       h130
+       l-15 155
+       q-1 5 -6 5
+       h-118
+       q-5 0 -6 -5
+       z"
+    fill="#AEBAC6"
+  />
+
+</svg>

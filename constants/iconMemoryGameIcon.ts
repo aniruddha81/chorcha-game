@@ -1,0 +1,48 @@
+import { Ionicons } from "@expo/vector-icons";
+
+
+
+
+// All available icons - using Ionicons
+export const AVAILABLE_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
+    "heart",
+    "star",
+    "moon",
+    "sunny",
+    "flash",
+    "flame",
+    "leaf",
+    "water",
+    "snow",
+    "cloud",
+    "thunderstorm",
+    "rainy",
+    "planet",
+    "rocket",
+    "airplane",
+    "car",
+    "bicycle",
+    "boat",
+    "bus",
+    "train",
+    "diamond",
+    "trophy",
+    "medal",
+    "gift",
+    "home",
+    "bulb",
+    "pizza",
+    "cafe",
+    "wine",
+    "ice-cream",
+    "fish",
+    "paw",
+    "football",
+    "basketball",
+    "tennisball",
+    "american-football",
+    "musical-notes",
+    "headset",
+    "game-controller",
+    "dice",
+];
