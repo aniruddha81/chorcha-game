@@ -13,7 +13,7 @@ const Index = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -21,9 +21,9 @@ const Index = () => {
         <Animated.View entering={FadeInDown.delay(200)} style={styles.header}>
           <Text style={styles.superTitle}>DAILY TRAINING</Text>
           <Text style={styles.title}>
-            Mind <Text style={styles.highlight}>Gym</Text>
+            Play <Text style={styles.highlight}>Lab</Text>
           </Text>
-          <Text style={styles.subtitle}>Select a workout to begin</Text>
+          <Text style={styles.subtitle}>Crafted for Curious Minds</Text>
         </Animated.View>
 
         <View style={styles.grid}>
@@ -52,6 +52,33 @@ const Index = () => {
             color="#a855f7"
             onPress={() => router.push("./games/vocabulary-match")}
             delay={800}
+          />
+
+          <GameCard
+            title="Icon Memory"
+            description="Never click the same icon twice. Test your recall!"
+            icon="shapes"
+            color="#f59e0b"
+            onPress={() => router.push("./games/icon-memory")}
+            delay={1000}
+          />
+
+          <GameCard
+            title="Weight Balance"
+            description="Balance the scale using fractional weight blocks."
+            icon="scale"
+            color="#60a5fa"
+            onPress={() => router.push("./games/weight-balance")}
+            delay={1200}
+          />
+
+          <GameCard
+            title="Maze Escape"
+            description="Navigate through the maze before time runs out!"
+            icon="navigate"
+            color="#10b981"
+            onPress={() => router.push("./games/maze-escape")}
+            delay={1400}
           />
         </View>
       </ScrollView>
