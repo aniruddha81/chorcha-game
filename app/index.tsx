@@ -62,6 +62,15 @@ const Index = () => {
             onPress={() => router.push("./games/zip-puzzle")}
             delay={1000}
           />
+
+          <GameCard
+            title="Sentence Complete"
+            description="Fill in the blanks and master vocabulary."
+            icon="text"
+            color="#a855f7"
+            onPress={() => router.push("./games/sentence-complete")}
+            delay={1200}
+          />
         </View>
       </ScrollView>
     </View>
