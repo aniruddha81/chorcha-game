@@ -13,7 +13,7 @@ const Index = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -55,19 +55,21 @@ const Index = () => {
           />
 
           <GameCard
-
             title="Zip Puzzle"
             description="Draw a path connecting all numbers in order."
             icon="git-network"
             color="#f59e0b"
             onPress={() => router.push("./games/zip-puzzle")}
+            delay={1000}
+          />
+
+          <GameCard
             title="Icon Memory"
             description="Never click the same icon twice. Test your recall!"
             icon="shapes"
             color="#f59e0b"
             onPress={() => router.push("./games/icon-memory")}
-
-            delay={1000}
+            delay={1100}
           />
 
           <GameCard
@@ -79,7 +81,7 @@ const Index = () => {
             onPress={() => router.push("./games/sentence-complete")}
             delay={1200}
           />
-
+          <GameCard
             title="Weight Balance"
             description="Balance the scale using fractional weight blocks."
             icon="scale"
@@ -116,7 +118,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   superTitle: {
-    color: COLORS.primary,
+    color: "#03B56A",
     fontSize: 12,
     fontWeight: "bold",
     letterSpacing: 2,
@@ -125,10 +127,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 42,
     fontWeight: "800",
-    color: "#7b7b87",
+    color: "#111",
   },
   highlight: {
-    color: COLORS.primary,
+    color: "#03B56A"
   },
   subtitle: {
     color: "#a1a1aa",
