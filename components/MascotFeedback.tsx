@@ -1,15 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, View, Dimensions } from "react-native";
+import {
+  Dimensions,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 import Svg, { Ellipse } from "react-native-svg";
 
 interface MascotFeedbackProps {
   text: string;
+  showBg?: boolean;
+  onClose?: () => void;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-export const MascotFeedback = ({ text }: MascotFeedbackProps) => {
+export const MascotFeedback = ({
+  text,
+  showBg = true,
+  onClose = () => {},
+}: MascotFeedbackProps) => {
   const [displayedText, setDisplayedText] = useState("");
 
   useEffect(() => {
@@ -33,13 +46,15 @@ export const MascotFeedback = ({ text }: MascotFeedbackProps) => {
   }, [text]);
 
   return (
-    <View style={styles.container}>
+    <Pressable style={styles.container} onPress={onClose}>
       {/* Background SVG - Positioned Absolutely */}
-      <View style={styles.svgBackground}>
-        <Svg width={SCREEN_WIDTH} height="123" viewBox="0 0 393 123">
-          <Ellipse cx="195" cy="77.5" rx="243" ry="77.5" fill="#D9D9D9" />
-        </Svg>
-      </View>
+      {showBg === true ? (
+        <View style={styles.svgBackground}>
+          <Svg width={SCREEN_WIDTH} height="123" viewBox="0 0 393 123">
+            <Ellipse cx="195" cy="77.5" rx="243" ry="77.5" fill="#D9D9D9" />
+          </Svg>
+        </View>
+      ) : null}
 
       <View style={styles.contentWrapper}>
         {/* Mascot Image */}
@@ -66,7 +81,7 @@ export const MascotFeedback = ({ text }: MascotFeedbackProps) => {
           </Animated.View>
         ) : null}
       </View>
-    </View>
+    </Pressable>
   );
 };
 

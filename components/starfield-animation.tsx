@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { StyleSheet, View, Dimensions } from "react-native";
 import Animated, {
   useSharedValue,
@@ -12,25 +12,37 @@ import Animated, {
 const { width, height } = Dimensions.get("window");
 const NUM_STARS = 100;
 
-const Star = () => {
-  const translateY = useSharedValue(-10); // Start off-screen
+type StarProps = {
+  speed: number; // 1 = normal, 2 = 2x faster, 0.5 = slower
+};
+
+const Star = ({ speed }: StarProps) => {
+  const translateY = useSharedValue(-10);
   const opacity = useSharedValue(Math.random());
 
-  // Random horizontal position and speed
-  const randomX = Math.random() * width;
-  const duration = 3000 + Math.random() * 5000;
-  const delay = Math.random() * 5000;
+  const { randomX, baseDuration, delay } = useMemo(() => {
+    return {
+      randomX: Math.random() * width,
+      baseDuration: 3000 + Math.random() * 5000, // original duration range
+      delay: Math.random() * 5000,
+    };
+  }, []);
 
   useEffect(() => {
+    const adjustedDuration = Math.max(200, baseDuration / speed); // prevent too-fast/zero
+
     translateY.value = withDelay(
       delay,
       withRepeat(
-        withTiming(height + 10, { duration, easing: Easing.linear }),
-        -1, // Infinite loop
+        withTiming(height + 10, {
+          duration: adjustedDuration,
+          easing: Easing.linear,
+        }),
+        -1,
         false
       )
     );
-  }, []);
+  }, [delay, baseDuration, speed, translateY]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }, { translateX: randomX }],
@@ -40,11 +52,11 @@ const Star = () => {
   return <Animated.View style={[styles.star, animatedStyle]} />;
 };
 
-export default function Background() {
+export default function Background({ speed = 1 }: { speed?: number }) {
   return (
     <View style={styles.container} pointerEvents="none">
       {[...Array(NUM_STARS)].map((_, i) => (
-        <Star key={i} />
+        <Star key={i} speed={speed} />
       ))}
     </View>
   );

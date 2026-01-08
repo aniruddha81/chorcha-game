@@ -1,3 +1,5 @@
+import { MascotFeedback } from "@/components/MascotFeedback";
+import Background from "@/components/starfield-animation";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -10,6 +12,10 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  cancelAnimation,
+  Easing,
+  runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -18,7 +24,7 @@ import Animated, {
 // Types
 interface Question {
   word: string;
-  options: [string, string]; // Only 2 options
+  options: [string, string];
   answer: string;
 }
 
@@ -45,35 +51,51 @@ const DATA: Question[] = [
 
 const TIMER_LIMIT = 30;
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const ROCKET_SIZE = 120;
 
 // Rocket vertical position boundaries
+const ROCKET_TOP_Y = 10;
+const ROCKET_MAX_Y = SCREEN_HEIGHT - 180; // adjust if needed
+const ROCKET_MIDDLE_Y = ROCKET_MAX_Y / 2;
 
-const ROCKET_TOP_Y = 10; // Top position (boost limit)
-const ROCKET_MAX_Y = SCREEN_HEIGHT - 120; // keep some room so it doesn't go under the quiz
-// Maximum fall position (bottom of game area)
-
-const ROCKET_MIDDLE_Y = ROCKET_MAX_Y / 2; // Middle of game area (starting position)
-
-// Movement speeds
-const DRIFT_DOWN_SPEED = (ROCKET_MAX_Y - 10 - ROCKET_MIDDLE_Y) / TIMER_LIMIT; // pixels per second to drift down
-const CORRECT_ANSWER_BOOST = 50; // pixels up on correct
-const WRONG_ANSWER_PENALTY = 60; // pixels down on wrong
+// Movement
+const CORRECT_ANSWER_BOOST = 50;
+const WRONG_ANSWER_PENALTY = 60;
 
 export default function RocketSynonymGame() {
-  // State
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
-  const [lives, setLives] = useState<number>(3);
-  const [score, setScore] = useState<number>(0);
-  const [timer, setTimer] = useState<number>(TIMER_LIMIT);
-  const [wrongStreak, setWrongStreak] = useState<number>(0);
-  const [gameOver, setGameOver] = useState<boolean>(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [lives, setLives] = useState(3);
+  const [score, setScore] = useState(0);
+  const [timer, setTimer] = useState(TIMER_LIMIT);
+  const [wrongStreak, setWrongStreak] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [starSpeed, setStarSpeed] = useState(1);
+  const [showMascot, setShowMascot] = useState(false);
 
-  // Rocket vertical position (moves up/down)
+  // Rocket vertical position
   const rocketY = useSharedValue(ROCKET_MIDDLE_Y);
+
+  // Guard to prevent multiple loseLife calls (bottom hit / timeout overlap)
+  const lifeLock = useSharedValue(false);
 
   const animatedRocketStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: rocketY.value }],
   }));
+
+  // Smooth drift (UI thread)
+  const startDrift = useCallback(() => {
+    cancelAnimation(rocketY);
+    rocketY.value = withTiming(ROCKET_MAX_Y, {
+      duration: TIMER_LIMIT * 1000,
+      easing: Easing.linear,
+    });
+  }, [rocketY]);
+
+  // Next question
+  const nextQuestion = useCallback(() => {
+    setTimer(TIMER_LIMIT);
+    setCurrentIndex((prev) => (prev + 1) % DATA.length);
+  }, []);
 
   // Reset game
   const resetGame = useCallback(() => {
@@ -82,9 +104,13 @@ export default function RocketSynonymGame() {
     setTimer(TIMER_LIMIT);
     setWrongStreak(0);
     setGameOver(false);
+
+    lifeLock.value = false;
     rocketY.value = ROCKET_MIDDLE_Y;
+
     setCurrentIndex(0);
-  }, [rocketY]);
+    startDrift(); // important: currentIndex might remain 0, so restart drift here
+  }, [rocketY, startDrift, lifeLock]);
 
   // End game
   const endGame = useCallback(
@@ -97,61 +123,132 @@ export default function RocketSynonymGame() {
     [score, resetGame]
   );
 
-  // Next question
-  const nextQuestion = useCallback(() => {
-    setTimer(TIMER_LIMIT);
-    setCurrentIndex((prev) => (prev + 1) % DATA.length);
-  }, []);
+  const animateRocketThenNext = useCallback(
+    (targetY: number) => {
+      cancelAnimation(rocketY);
 
-  // Handle wrong answer
+      rocketY.value = withTiming(targetY, { duration: 250 }, (finished) => {
+        if (finished) {
+          runOnJS(nextQuestion)(); // ✅ go next only AFTER rocket anim finishes
+        }
+      });
+    },
+    [rocketY, nextQuestion]
+  );
+
   const handleWrong = useCallback(() => {
+    // Decrement life immediately on wrong answer
+    let outOfLives = false;
+    setLives((prev) => {
+      const newLives = prev - 1;
+      if (newLives <= 0) outOfLives = true;
+      return newLives;
+    });
+
     const newStreak = wrongStreak + 1;
     setWrongStreak(newStreak);
 
-    // Rocket falls down (but don't lose life here, only on bottom hit or timeout)
-    const newY = Math.min(ROCKET_MAX_Y, rocketY.value + WRONG_ANSWER_PENALTY);
-    rocketY.value = withTiming(newY, { duration: 300 });
+    const targetY = Math.min(
+      ROCKET_MAX_Y,
+      rocketY.value + WRONG_ANSWER_PENALTY
+    );
 
-    if (newStreak >= 3) {
-      endGame("3 wrong answers in a row!");
-    } else {
-      nextQuestion();
-    }
-  }, [wrongStreak, endGame, nextQuestion, rocketY]);
+    // Prevent bottom-hit detection from double-decrementing life
+    lifeLock.value = true;
 
-  // Lose a life (called when rocket hits bottom or timeout)
-  const loseLife = useCallback(() => {
-    const newLives = lives - 1;
-    setLives(newLives);
-
-    if (newLives <= 0) {
+    if (outOfLives) {
       endGame("Out of lives!");
-    } else {
-      // Reset rocket to middle and continue
-      rocketY.value = withTiming(ROCKET_MIDDLE_Y, { duration: 300 });
-      setTimer(TIMER_LIMIT);
-      nextQuestion();
+      return;
     }
-  }, [lives, endGame, nextQuestion, rocketY]);
 
-  // Timer + Drift Effect (rocket drifts down over time)
-  useEffect(() => {
-    if (gameOver || lives <= 0) return;
+    // If 3 wrong in a row -> show the fall first, then end game
+    if (newStreak >= 3) {
+      cancelAnimation(rocketY);
+      rocketY.value = withTiming(targetY, { duration: 250 }, (finished) => {
+        if (finished) runOnJS(endGame)("3 wrong answers in a row!");
+      });
+      return;
+    }
 
-    const interval = setInterval(() => {
-      // Drift rocket downward slowly
-      const newY = Math.min(ROCKET_MAX_Y, rocketY.value + DRIFT_DOWN_SPEED);
-      rocketY.value = newY;
+    // Otherwise animate down, then next question
+    animateRocketThenNext(targetY);
+  }, [wrongStreak, rocketY, endGame, animateRocketThenNext, lifeLock]);
 
-      // Check if rocket hit the danger zone (bottom)
-      if (newY >= ROCKET_MAX_Y - 10) {
-        loseLife();
-        return;
+  const handleAnswer = (selected: string) => {
+    if (gameOver) return;
+
+    if (selected === DATA[currentIndex].answer) {
+      setScore((s) => s + 20);
+      setWrongStreak(0);
+
+      const targetY = Math.max(
+        ROCKET_TOP_Y,
+        rocketY.value - CORRECT_ANSWER_BOOST
+      );
+
+      // Animate boost first, then next question
+      animateRocketThenNext(targetY);
+    } else {
+      handleWrong();
+    }
+  };
+
+  // Lose a life
+  const loseLife = useCallback(() => {
+    setLives((prevLives) => {
+      const newLives = prevLives - 1;
+
+      if (newLives <= 0) {
+        endGame("Out of lives!");
+        return 0;
       }
 
+      // continue game
+      setTimer(TIMER_LIMIT);
+      setWrongStreak(0);
+
+      // reset rocket and continue with next question
+      cancelAnimation(rocketY);
+      rocketY.value = withTiming(ROCKET_MIDDLE_Y, { duration: 250 });
+
+      nextQuestion(); // triggers startDrift via effect below
+      return newLives;
+    });
+  }, [endGame, nextQuestion, rocketY]);
+
+  // Start drift when question changes (or game resumes)
+  useEffect(() => {
+    if (gameOver || lives <= 0 || showMascot) return;
+
+    // release lock for next round
+    lifeLock.value = false;
+
+    startDrift();
+  }, [currentIndex, gameOver, lives, startDrift, lifeLock, showMascot]);
+
+  // Detect bottom hit smoothly (UI thread → JS)
+  useAnimatedReaction(
+    () => rocketY.value,
+    (y, prev) => {
+      const threshold = ROCKET_MAX_Y - 10;
+
+      if (!lifeLock.value && y >= threshold && (prev ?? 0) < threshold) {
+        lifeLock.value = true;
+        runOnJS(loseLife)();
+      }
+    }
+  );
+
+  // Timer (JS) - timeout loses life
+  useEffect(() => {
+    if (gameOver || lives <= 0 || showMascot) return;
+
+    const interval = setInterval(() => {
       setTimer((prev) => {
         if (prev <= 1) {
-          loseLife(); // Timeout = lose a life
+          // lock so bottom-hit doesn't double-trigger
+          lifeLock.value = true;
+          loseLife();
           return TIMER_LIMIT;
         }
         return prev - 1;
@@ -159,29 +256,18 @@ export default function RocketSynonymGame() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentIndex, lives, gameOver, loseLife, rocketY]);
+  }, [gameOver, lives, loseLife, lifeLock, showMascot]);
 
-  // Handle answer selection
-  const handleAnswer = (selected: string) => {
-    if (gameOver) return;
-
-    if (selected === DATA[currentIndex].answer) {
-      setScore((s) => s + 20);
-      setWrongStreak(0); // Reset wrong streak
-
-      // Rocket boosts up
-      const newY = Math.max(ROCKET_TOP_Y, rocketY.value - CORRECT_ANSWER_BOOST);
-      rocketY.value = withTiming(newY, { duration: 300 });
-
-      nextQuestion();
-    } else {
-      handleWrong();
-    }
-  };
+  useEffect(() => {
+    setShowMascot(true);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Full-screen Game Area (behind everything) */}
+      {/* background */}
+      <Background speed={starSpeed} />
+
+      {/* full screen game world */}
       <View style={styles.gameArea}>
         <View style={styles.dangerZone} />
 
@@ -193,9 +279,8 @@ export default function RocketSynonymGame() {
         </Animated.View>
       </View>
 
-      {/* UI Overlay (on top of the game area) */}
-      <View style={styles.overlay}>
-        {/* Header - Score, Lives */}
+      {/* overlay */}
+      <View style={styles.overlay} pointerEvents="box-none">
         <View style={styles.header}>
           <View style={styles.scoreContainer}>
             <Text style={styles.scoreIcon}>🏆</Text>
@@ -211,10 +296,7 @@ export default function RocketSynonymGame() {
           </View>
         </View>
 
-        {/* Spacer pushes quizCard to bottom */}
-        <View style={{ flex: 1 }} />
-
-        {/* Question Card */}
+        {/* pinned bottom card */}
         <View style={styles.quizCard}>
           <Text style={styles.instructionText}>Find the synonym for:</Text>
           <Text style={styles.targetWord}>{DATA[currentIndex].word}</Text>
@@ -231,6 +313,17 @@ export default function RocketSynonymGame() {
               </TouchableOpacity>
             ))}
           </View>
+
+          {showMascot === true ? (
+            <MascotFeedback
+              text={`select the correct synonym of the highlighted word`}
+              showBg={false}
+              onClose={() => setShowMascot(false)}
+            />
+          ) : null}
+
+          {/* If you want to show timer text */}
+          <Text style={styles.timerTextOverlay}>⏱ {timer}s</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -238,10 +331,19 @@ export default function RocketSynonymGame() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#1a3a4a",
+  container: { flex: 1, backgroundColor: "transparent" },
+
+  gameArea: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "flex-start",
+    alignItems: "center",
   },
+
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "transparent",
+  },
+
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -250,6 +352,7 @@ const styles = StyleSheet.create({
     paddingTop: 15,
     paddingBottom: 10,
   },
+
   scoreContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -258,54 +361,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
   },
-  scoreIcon: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  scoreText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  livesContainer: {
-    flexDirection: "row",
-    gap: 4,
-  },
-  heart: {
-    fontSize: 20,
-  },
-  timerContainer: {
-    marginHorizontal: 20,
-    height: 24,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: 12,
-    overflow: "hidden",
-    justifyContent: "center",
-  },
-  timerBar: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: "#4CAF50",
-    borderRadius: 12,
-  },
-  timerText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  gameArea: {
-    ...StyleSheet.absoluteFillObject, // <-- full screen
-    justifyContent: "flex-start",
-    alignItems: "center",
-  },
+  scoreIcon: { fontSize: 16, marginRight: 6 },
+  scoreText: { color: "white", fontSize: 18, fontWeight: "bold" },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
+  livesContainer: { flexDirection: "row", gap: 4 },
+  heart: { fontSize: 20 },
+
   dangerZone: {
     position: "absolute",
     bottom: 0,
@@ -316,20 +377,22 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderTopColor: "rgba(255, 0, 0, 0.5)",
   },
-  rocketContainer: {
-    alignItems: "center",
-  },
-  rocketEmoji: {
-    width: 60,
-    height: 60,
-  },
+
+  rocketContainer: { alignItems: "center" },
+  rocketEmoji: { width: ROCKET_SIZE, height: ROCKET_SIZE },
+
   quizCard: {
-    backgroundColor: "rgba(13, 37, 48, 0.75)", // 👈 transparency
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+
+    backgroundColor: "rgba(13, 37, 48, 0.6)",
     padding: 25,
+    paddingBottom: 50,
+
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingBottom: 40,
-    backdropFilter: "blur(6px)", // ❌ web only (ignore in RN)
   },
 
   instructionText: {
@@ -338,6 +401,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 8,
   },
+
   targetWord: {
     color: "#FFD700",
     fontSize: 36,
@@ -349,10 +413,8 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
   },
 
-  optionsContainer: {
-    flexDirection: "row",
-    gap: 12,
-  },
+  optionsContainer: { flexDirection: "row", gap: 12 },
+
   optionBtn: {
     flex: 1,
     backgroundColor: "#2c4a5a",
@@ -361,6 +423,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#3a5a6a",
   },
+
   optionText: {
     color: "white",
     fontSize: 18,
@@ -369,5 +432,12 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.7)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+
+  timerTextOverlay: {
+    marginTop: 14,
+    color: "rgba(255,255,255,0.8)",
+    textAlign: "center",
+    fontWeight: "600",
   },
 });
