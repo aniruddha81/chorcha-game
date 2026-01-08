@@ -615,10 +615,12 @@ export default function MazeEscapeGame() {
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <Ionicons name="arrow-back" size={24} color="#fff" />
                 </TouchableOpacity>
-
                 <View style={styles.headerCenter}>
-                    <Text style={styles.gameTitle}>Maze Escape</Text>
-                    <Text style={styles.levelText}>Level {currentLevel.level}</Text>
+                    <PieTimer
+                        remaining={timeRemaining}
+                        total={currentLevel.timeLimit}
+                        size={40}
+                    />
                 </View>
 
                 <View style={styles.headerRight}>
@@ -629,34 +631,6 @@ export default function MazeEscapeGame() {
                 </View>
             </View>
 
-            {/* Timer and Stats HUD */}
-            {status === "playing" && (
-                <Animated.View entering={FadeInDown} style={styles.hud}>
-                    <View style={styles.hudItem}>
-                        <PieTimer
-                            remaining={timeRemaining}
-                            total={currentLevel.timeLimit}
-                            size={36}
-                        />
-                        <Text
-                            style={[
-                                styles.timerText,
-                                timeRemaining <= GAME_CONFIG.hurryTimeThreshold && styles.timerTextUrgent,
-                            ]}
-                        >
-                            {timeRemaining}s
-                        </Text>
-                    </View>
-
-                    <View style={styles.hudDivider} />
-
-                    <View style={styles.hudItem}>
-                        <Ionicons name="footsteps" size={20} color="#a1a1aa" />
-                        <Text style={styles.hudText}>{moveCount} moves</Text>
-                    </View>
-                </Animated.View>
-            )}
-
             {/* Game Area */}
             <View style={styles.gameArea} {...panResponder.panHandlers}>
                 {status === "playing" && (
@@ -664,38 +638,6 @@ export default function MazeEscapeGame() {
                         entering={FadeIn}
                         style={[styles.gameContent, boardAnimatedStyle]}
                     >
-                        <View style={styles.instructionContainer}>
-                            <Ionicons name="swap-horizontal" size={20} color={COLORS.primary} />
-                            <Text style={styles.instruction}>Swipe anywhere to move</Text>
-                        </View>
-
-                        <View style={styles.legend}>
-                            <View style={styles.legendItem}>
-                                <View style={[styles.legendColor, { backgroundColor: '#22d3ee' }]} />
-                                <Text style={styles.legendText}>Start</Text>
-                            </View>
-                            <View style={styles.legendItem}>
-                                <View style={[styles.legendColor, { backgroundColor: '#22c55e' }]} />
-                                <Text style={styles.legendText}>Exit</Text>
-                            </View>
-                            <View style={styles.legendItem}>
-                                <View style={{
-                                    width: 14,
-                                    height: 14,
-                                    borderRadius: 7,
-                                    overflow: 'hidden',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                }}>
-                                    <Image
-                                        source={require("../../assets/images/chorcha-mascot.png")}
-                                        style={{ width: '100%', height: '100%' }}
-                                        resizeMode="contain"
-                                    />
-                                </View>
-                                <Text style={styles.legendText}>Mascot</Text>
-                            </View>
-                        </View>
 
                         <MazeBoard
                             grid={grid}
@@ -854,7 +796,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     gameTitle: {
-        color: "#fff",
+        color: "#111",
         fontSize: 20,
         fontWeight: "bold",
     },

@@ -20,14 +20,13 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
    FadeIn,
    FadeInDown,
-   runOnJS,
    SlideInDown,
    SlideOutDown,
    useAnimatedStyle,
    useSharedValue,
    withSequence,
    withSpring,
-   withTiming,
+   withTiming
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
@@ -281,26 +280,29 @@ export default function ZipGameScreen() {
    // Pan gesture for drawing
    const panGesture = Gesture.Pan()
       .minDistance(0)
+      .runOnJS(true) // Run on JS thread to access gridLayout state safely
       .onStart((e) => {
          const cell = getCellFromPosition(e.absoluteX, e.absoluteY);
          if (cell !== null) {
-            runOnJS(addToPath)(cell);
+            addToPath(cell);
          }
       })
       .onUpdate((e) => {
          const cell = getCellFromPosition(e.absoluteX, e.absoluteY);
          if (cell !== null) {
-            runOnJS(addToPath)(cell);
+            addToPath(cell);
          }
       });
 
    // Tap gesture to start from cell 1
-   const tapGesture = Gesture.Tap().onEnd((e) => {
-      const cell = getCellFromPosition(e.absoluteX, e.absoluteY);
-      if (cell !== null) {
-         runOnJS(addToPath)(cell);
-      }
-   });
+   const tapGesture = Gesture.Tap()
+      .runOnJS(true)
+      .onEnd((e) => {
+         const cell = getCellFromPosition(e.absoluteX, e.absoluteY);
+         if (cell !== null) {
+            addToPath(cell);
+         }
+      });
 
    const composedGesture = Gesture.Simultaneous(tapGesture, panGesture);
 
@@ -415,8 +417,6 @@ export default function ZipGameScreen() {
          onPress={handleScreenTap}
       >
          <StatusBar style="dark" />
-
-
 
          {/* Instructions */}
          <Animated.View entering={FadeIn.delay(300)} style={styles.instructionContainer}>
