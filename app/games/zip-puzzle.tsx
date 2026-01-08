@@ -1,5 +1,6 @@
 import { AnimatedNumberBadge } from "@/components/AnimatedNumberBadge";
 import { MascotFeedback } from "@/components/MascotFeedback";
+import { SubtleConfetti } from "@/components/SubtleConfetti";
 import { ZipCell } from "@/components/ZipCell";
 import { ZIP_COLORS, ZIP_LEVELS } from "@/constants/zipGameConfig";
 import * as Haptics from "expo-haptics";
@@ -596,6 +597,9 @@ export default function ZipGameScreen() {
          >
             Tap anywhere to continue
          </Animated.Text>
+
+         {/* Subtle Confetti */}
+         <SubtleConfetti isVisible={status === "LEVEL_COMPLETE"} />
 
          {/* Mascot Overlay */}
          {mascotMessage ? (
