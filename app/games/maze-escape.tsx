@@ -32,6 +32,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+// Import maze cell type from generator
+import { MazeCell as MazeCellData, MazeGrid } from "@/utils/mazeGenerator";
+
 // ============= TYPES =============
 type GameStatus = "idle" | "playing" | "won" | "lost";
 type Direction = "up" | "down" | "left" | "right";
@@ -41,9 +44,6 @@ interface Position {
     r: number;
     c: number;
 }
-
-// Import maze cell type from generator
-import { MazeCell as MazeCellData, MazeGrid } from "@/utils/mazeGenerator";
 
 // ============= CONSTANTS =============
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
