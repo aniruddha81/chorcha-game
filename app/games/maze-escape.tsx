@@ -1,3 +1,4 @@
+import { GameResult } from "@/components/GameResult";
 import { MascotFeedback } from "@/components/MascotFeedback";
 import { PieTimer } from "@/components/PieTimer";
 import { COLORS } from "@/constants/gameConfig";
@@ -10,7 +11,6 @@ import {
 import { generateMaze } from "@/utils/mazeGenerator";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -25,7 +25,6 @@ import {
 } from "react-native";
 import Animated, {
     FadeIn,
-    FadeInDown,
     useAnimatedStyle,
     useSharedValue,
     withSequence,
@@ -653,120 +652,27 @@ export default function MazeEscapeGame() {
                     </Animated.View>
                 )}
 
-                {/* Win Screen */}
-                {status === "won" && (
-                    <Animated.View entering={FadeInDown.springify()} style={styles.endScreen}>
-                        <View style={styles.endIconContainer}>
-                            <LinearGradient
-                                colors={["rgba(74, 222, 128, 0.2)", "rgba(74, 222, 128, 0.05)"]}
-                                style={styles.endIconGradient}
-                            >
-                                <Ionicons name="trophy" size={80} color={COLORS.success} />
-                            </LinearGradient>
-                        </View>
-                        <Text style={[styles.endTitle, { color: COLORS.success }]}>
-                            Maze Escaped!
-                        </Text>
-                        <Text style={styles.endSubtitle}>
-                            You found the exit with {timeRemaining}s remaining!
-                        </Text>
-
-                        <View style={styles.statsContainer}>
-                            <View style={styles.statItem}>
-                                <Text style={[styles.statValue, { color: COLORS.success }]}>
-                                    {moveCount}
-                                </Text>
-                                <Text style={styles.statLabel}>Moves</Text>
-                            </View>
-                            <View style={styles.statDivider} />
-                            <View style={styles.statItem}>
-                                <Text style={[styles.statValue, { color: "#f59e0b" }]}>{score}</Text>
-                                <Text style={styles.statLabel}>Total Score</Text>
-                            </View>
-                            <View style={styles.statDivider} />
-                            <View style={styles.statItem}>
-                                <Text style={[styles.statValue, { color: COLORS.primary }]}>
-                                    +{timeRemaining * currentLevel.timeBonusMultiplier}
-                                </Text>
-                                <Text style={styles.statLabel}>Time Bonus</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.endButtons}>
-                            {currentLevelIndex < MAZE_LEVELS.length - 1 ? (
-                                <TouchableOpacity
-                                    style={[styles.primaryButton, { backgroundColor: COLORS.success }]}
-                                    onPress={handleNextLevel}
-                                >
-                                    <Ionicons name="arrow-forward" size={22} color="#000" />
-                                    <Text style={[styles.primaryButtonText, { color: "#000" }]}>
-                                        Next Level
-                                    </Text>
-                                </TouchableOpacity>
-                            ) : (
-                                <TouchableOpacity
-                                    style={[styles.primaryButton, { backgroundColor: COLORS.success }]}
-                                    onPress={() => {
-                                        setScore(0);
-                                        initializeGame(0);
-                                    }}
-                                >
-                                    <Ionicons name="refresh" size={22} color="#000" />
-                                    <Text style={[styles.primaryButtonText, { color: "#000" }]}>
-                                        Play Again
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                            <TouchableOpacity style={styles.secondaryButton} onPress={() => router.back()}>
-                                <Ionicons name="home" size={22} color="#a1a1aa" />
-                            </TouchableOpacity>
-                        </View>
-                    </Animated.View>
-                )}
-
-                {/* Lose Screen */}
-                {status === "lost" && (
-                    <Animated.View entering={FadeInDown.springify()} style={styles.endScreen}>
-                        <View style={styles.endIconContainer}>
-                            <LinearGradient
-                                colors={["rgba(248, 113, 113, 0.2)", "rgba(248, 113, 113, 0.05)"]}
-                                style={styles.endIconGradient}
-                            >
-                                <Ionicons name="time" size={80} color={COLORS.error} />
-                            </LinearGradient>
-                        </View>
-                        <Text style={styles.endTitle}>Time's Up!</Text>
-                        <Text style={styles.endSubtitle}>
-                            You ran out of time on Level {currentLevel.level}
-                        </Text>
-
-                        <View style={styles.statsContainer}>
-                            <View style={styles.statItem}>
-                                <Text style={styles.statValue}>{moveCount}</Text>
-                                <Text style={styles.statLabel}>Moves Made</Text>
-                            </View>
-                            <View style={styles.statDivider} />
-                            <View style={styles.statItem}>
-                                <Text style={styles.statValue}>{score}</Text>
-                                <Text style={styles.statLabel}>Score Kept</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.endButtons}>
-                            <TouchableOpacity style={styles.primaryButton} onPress={handleRetry}>
-                                <Ionicons name="refresh" size={22} color="#fff" />
-                                <Text style={styles.primaryButtonText}>Try Again</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.secondaryButton} onPress={() => router.back()}>
-                                <Ionicons name="home" size={22} color="#a1a1aa" />
-                            </TouchableOpacity>
-                        </View>
-                    </Animated.View>
+                {/* Win / Lose Screen - Use GameResult Component */}
+                {(status === "won" || status === "lost") && (
+                    <GameResult
+                        scorePercentage={
+                            status === "won"
+                                ? Math.round((timeRemaining / currentLevel.timeLimit) * 100)
+                                : Math.round((score / 1000) * 10) // Approximate score-based percentage
+                        }
+                        onRetry={status === "won" ? handleNextLevel : handleRetry}
+                        onHome={() => router.back()}
+                        mascotMessage={
+                            status === "won"
+                                ? "Maze escaped! Great navigation!"
+                                : "Time's up! Don't give up!"
+                        }
+                    />
                 )}
             </View>
 
-            {/* Mascot Feedback */}
-            <MascotFeedback text={mascotMessage} />
+            {/* Mascot Feedback - Only show during gameplay */}
+            {status === "playing" && <MascotFeedback text={mascotMessage} />}
         </View>
     );
 }
