@@ -1,4 +1,5 @@
 import { GameResult } from "@/components/GameResult";
+import { MascotFeedback, MascotMood } from "@/components/MascotFeedback";
 import { POLARITY_COLORS, POLARITY_WORDS, type PolarityWord } from "@/constants/polarityWords";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -175,7 +176,7 @@ const WrongAnswerModal = ({ word, selectedAnswer, onContinue }: WrongAnswerModal
 
                 {/* Explanation */}
                 <View style={styles.explanationContainer}>
-                    <Text style={styles.explanationLabel}>Why it's {word.polarity}:</Text>
+                    <Text style={styles.explanationLabel}>Why it&apos;s {word.polarity}:</Text>
                     <Text style={styles.explanationText}>{word.explanation}</Text>
                 </View>
 
@@ -316,7 +317,7 @@ const SwipeableWordCard = ({ word, onSwipe, disabled, levelColor }: SwipeableWor
             <GestureDetector gesture={panGesture}>
                 <Animated.View
                     key={word}
-                    entering={ZoomIn.springify().damping(12)}
+                    entering={ZoomIn.duration(250)}
                     style={[styles.wordCard, cardAnimatedStyle, cardBorderStyle]}
                 >
                     <Animated.View style={[styles.cardIndicator, styles.cardIndicatorLeft, negativeIndicatorStyle]}>
@@ -462,6 +463,8 @@ export default function WordPolarityGame() {
     const [showLevelComplete, setShowLevelComplete] = useState(false);
     const [wrongWord, setWrongWord] = useState<PolarityWord | null>(null);
     const [selectedAnswer, setSelectedAnswer] = useState<"positive" | "negative">("positive");
+    const [mascotMessage, setMascotMessage] = useState("");
+    const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
     const [cardKey, setCardKey] = useState(0);
 
     // Shuffle words for this session
@@ -489,6 +492,12 @@ export default function WordPolarityGame() {
         return () => clearInterval(timer);
     }, [isGameOver, isPaused, showLevelComplete, timeLeft]);
 
+    // Initial mascot message
+    useEffect(() => {
+        setMascotMessage("Swipe right for positive, left for negative!");
+        setMascotMood("explain");
+    }, []);
+
     // Handle swipe
     const handleSwipe = useCallback((direction: "positive" | "negative") => {
         if (isGameOver || isPaused || !currentWord) return;
@@ -500,6 +509,8 @@ export default function WordPolarityGame() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setTotalCorrect((prev) => prev + 1);
             setLevelCorrect((prev) => prev + 1);
+            setMascotMessage("Great job! Keep going!");
+            setMascotMood("happy");
 
             const newWordsInLevel = wordsInLevel + 1;
             setWordsInLevel(newWordsInLevel);
@@ -531,6 +542,8 @@ export default function WordPolarityGame() {
             setIsPaused(true);
             setWrongWord(currentWord);
             setSelectedAnswer(direction);
+            setMascotMessage("Oops! Let's learn this one.");
+            setMascotMood("angry");
             setShowWrongModal(true);
         }
     }, [isGameOver, isPaused, currentWord, currentWordIndex, shuffledWords.length, wordsInLevel, currentLevel]);
@@ -651,20 +664,9 @@ export default function WordPolarityGame() {
                     )}
                 </View>
 
-                {/* Stats Bar */}
-                <View style={styles.statsBar}>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Level</Text>
-                        <Text style={[styles.statValue, { color: levelColor.primary }]}>{currentLevel}/{TOTAL_LEVELS}</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Words</Text>
-                        <Text style={styles.statValue}>{wordsInLevel}/{WORDS_PER_LEVEL}</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Accuracy</Text>
-                        <Text style={styles.statValue}>{accuracy}%</Text>
-                    </View>
+                {/* Mascot Overlay - Fixed at bottom */}
+                <View style={styles.mascotOverlay}>
+                    <MascotFeedback text={mascotMessage} mood={mascotMood} />
                 </View>
 
                 {/* Wrong Answer Modal */}
@@ -913,26 +915,13 @@ const styles = StyleSheet.create({
         marginHorizontal: 12,
     },
 
-    // Stats Bar
-    statsBar: {
-        flexDirection: "row",
-        justifyContent: "space-around",
-        paddingHorizontal: 30,
-        paddingBottom: 20,
-        paddingTop: 8,
-    },
-    statItem: {
-        alignItems: "center",
-    },
-    statLabel: {
-        fontSize: 11,
-        color: POLARITY_COLORS.textMuted,
-        marginBottom: 2,
-    },
-    statValue: {
-        fontSize: 15,
-        fontWeight: "600",
-        color: POLARITY_COLORS.text,
+    // Mascot Overlay
+    mascotOverlay: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 2000,
     },
 
     // Level Complete Overlay

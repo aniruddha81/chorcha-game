@@ -230,20 +230,22 @@ export default function SentenceCompleteGame() {
       const isCorrect = selectedOption === currentQuestion.correctAnswer;
       const isWrong = showResult && !isCorrect;
 
-      // Colors based on state
-      const blankColor = (showResult && isCorrect) ? DESIGN_COLORS.correct : 'transparent';
-      const underlineColor = (showResult && isCorrect) ? DESIGN_COLORS.correct : '#000';
+      // Only show the answer if user answered correctly
+      const shouldShowAnswer = showResult && isCorrect;
+
+      // Generate blank spaces that match the answer length for layout consistency
+      const blankPlaceholder = answer.replace(/./g, ' ');
 
       return (
          <Text style={styles.sentenceText}>
             {parts[0]}
             <Text style={{
                textDecorationLine: 'underline',
-               textDecorationColor: underlineColor,
-               color: blankColor,
-               fontWeight: (showResult && isCorrect) ? 'bold' : '400',
+               textDecorationColor: shouldShowAnswer ? DESIGN_COLORS.correct : '#000',
+               color: shouldShowAnswer ? DESIGN_COLORS.correct : DESIGN_COLORS.text,
+               fontWeight: shouldShowAnswer ? 'bold' : '400',
             }}>
-               {answer}
+               {shouldShowAnswer ? answer : blankPlaceholder}
             </Text>
             {isWrong && <Text style={styles.crossText}> ×</Text>}
             {parts[1]}

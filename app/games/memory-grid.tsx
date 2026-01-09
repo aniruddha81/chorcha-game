@@ -312,8 +312,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   mascotContainer: {
-    width: "100%",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: "center",
-    paddingBottom: 10, // Slight padding from the absolute bottom if needed
+    paddingBottom: 10,
   },
 });

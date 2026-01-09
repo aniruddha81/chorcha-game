@@ -240,14 +240,12 @@ export default function VocabularyMatchGame() {
   });
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar style="dark" />
 
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.levelText}>Level 1</Text>
-
-        <PieTimer remaining={timeLeft} total={TIME_LIMIT} />
 
         <View style={styles.scoreContainer}>
           {lastAdded !== null && (
@@ -268,6 +266,11 @@ export default function VocabularyMatchGame() {
 
       {/* Game Area */}
       <View style={styles.gameArea}>
+        {/* Timer above card */}
+        <View style={styles.timerContainer}>
+          <PieTimer remaining={timeLeft} total={TIME_LIMIT} />
+        </View>
+
         <Animated.View
           key={`card-${score}-${displayedWord}`}
           entering={ZoomIn}
@@ -324,8 +327,8 @@ export default function VocabularyMatchGame() {
         </TouchableOpacity>
       </View>
 
-      {/* Mascot - Always visible */}
-      <View style={styles.mascotSpace}>
+      {/* Mascot - Fixed at bottom */}
+      <View style={[styles.mascotSpace, { paddingBottom: insets.bottom }]}>
         <MascotFeedback text={mascotMessage} mood={mascotMood} />
       </View>
     </View>
@@ -363,8 +366,12 @@ const styles = StyleSheet.create({
     color: "#333",
     marginTop: -4,
   },
+  timerContainer: {
+    marginBottom: 32,
+    alignItems: "center",
+  },
   gameArea: {
-    flex: 2,
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 15,
@@ -424,6 +431,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   mascotSpace: {
-    flex: 1.5,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
 });

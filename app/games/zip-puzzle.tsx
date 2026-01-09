@@ -20,8 +20,6 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
    FadeIn,
    FadeInDown,
-   SlideInDown,
-   SlideOutDown,
    useAnimatedStyle,
    useSharedValue,
    withSequence,
@@ -576,23 +574,6 @@ export default function ZipGameScreen() {
             </Animated.View>
          </GestureDetector>
 
-         {/* Progress indicator */}
-         <Animated.View entering={FadeIn.delay(400)} style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-               <Animated.View
-                  style={[
-                     styles.progressFill,
-                     {
-                        width: `${(path.length / totalCells) * 100}%`,
-                     },
-                  ]}
-               />
-            </View>
-            <Text style={styles.progressText}>
-               {path.length} / {totalCells} cells
-            </Text>
-         </Animated.View>
-
          {/* Tap to continue hint */}
          <Animated.Text
             entering={FadeIn.delay(300)}
@@ -607,15 +588,13 @@ export default function ZipGameScreen() {
          {/* Subtle Confetti */}
          <SubtleConfetti isVisible={status === "LEVEL_COMPLETE" || status === "ALL_COMPLETE"} />
 
-         {/* Mascot Overlay - Only show during gameplay */}
-         {mascotMessage && status !== "ALL_COMPLETE" ? (
-            <Animated.View
-               entering={SlideInDown.duration(400).springify().damping(18)}
-               exiting={SlideOutDown.duration(300)}
+         {/* Mascot Overlay - Fixed, always visible during gameplay */}
+         {status !== "ALL_COMPLETE" ? (
+            <View
                style={styles.mascotOverlay}
             >
                <MascotFeedback text={mascotMessage} mood={mascotMood} />
-            </Animated.View>
+            </View>
          ) : null}
 
          {/* Game Result - Show when all levels completed */}
@@ -713,30 +692,6 @@ const styles = StyleSheet.create({
    },
    row: {
       flexDirection: "row",
-   },
-   progressContainer: {
-      paddingHorizontal: 32,
-      paddingVertical: 16,
-      alignItems: "center",
-      opacity: 0, // Hide progress bar for now, as it's not in the design image
-   },
-   progressBar: {
-      width: "100%",
-      height: 6,
-      backgroundColor: "#E4E4E7",
-      borderRadius: 3,
-      overflow: "hidden",
-      marginBottom: 8,
-   },
-   progressFill: {
-      height: "100%",
-      backgroundColor: ZIP_COLORS.accent,
-      borderRadius: 3,
-   },
-   progressText: {
-      fontSize: 14,
-      color: "#71717a",
-      fontWeight: "500",
    },
    tapHint: {
       textAlign: 'center',

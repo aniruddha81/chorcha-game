@@ -840,8 +840,11 @@ const styles = StyleSheet.create({
         zIndex: 20,
     },
     mascotContainer: {
-        paddingBottom: 20,
-        width: '100%',
-        alignItems: 'center',
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        alignItems: "center",
+        paddingBottom: 10,
     },
 });
