@@ -3,6 +3,7 @@
  * Educational puzzle game where players balance a scale using weighted blocks
  * New design matching the reference with clean UI and mascot feedback
  */
+import { GameResult } from "@/components/GameResult";
 import { MascotFeedback } from "@/components/MascotFeedback";
 import {
     AvailableWeights,
@@ -12,7 +13,6 @@ import {
     GameStatus,
     LayoutRect,
     PAN_WIDTH,
-    ResultOverlay,
     ScaleBalance,
 } from "@/components/weight-balance";
 import { getRandomDecimalBlockSet } from "@/constants/balancedBlockSets";
@@ -316,21 +316,26 @@ export default function WeightBalanceGame() {
             {/* Spacer */}
             <View style={styles.spacer} />
 
-            {/* Mascot Feedback - Always at bottom */}
-            <MascotFeedback text={mascotMessage} />
+            {/* Mascot Feedback - Only show during gameplay */}
+            {status === "PLAYING" && <MascotFeedback text={mascotMessage} />}
 
-            {/* Result Overlay */}
-            <ResultOverlay
-                status={status}
-                levelPoints={levelConfig.level * 100}
-                timeBonus={levelConfig.timeLimit > 0 ? timeLeft * 10 : 0}
-                availableBlocksCount={availableBlocks.length}
-                isBalanced={isBalanced}
-                onNext={nextLevel}
-                onRetry={retryLevel}
-                onHome={() => router.back()}
-                isLastLevel={currentLevel >= WEIGHT_BALANCE_LEVELS.length - 1}
-            />
+            {/* Game Result Screen */}
+            {(status === "WIN" || status === "LOSE") && (
+                <GameResult
+                    scorePercentage={
+                        status === "WIN"
+                            ? Math.min(100, Math.round((score / ((currentLevel + 1) * 100)) * 100))
+                            : Math.round((currentLevel / WEIGHT_BALANCE_LEVELS.length) * 50)
+                    }
+                    onRetry={status === "WIN" ? nextLevel : retryLevel}
+                    onHome={() => router.back()}
+                    mascotMessage={
+                        status === "WIN"
+                            ? "Perfect balance! Well done!"
+                            : "Not balanced! Try again!"
+                    }
+                />
+            )}
         </View>
     );
 }

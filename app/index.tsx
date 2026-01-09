@@ -98,6 +98,16 @@ const Index = () => {
             onPress={() => router.push("./games/maze-escape")}
             delay={1400}
           />
+
+
+          <GameCard
+            title="Word Polarity"
+            description="Classify words as Positive or Negative quickly!"
+            icon="swap-horizontal"
+            color="#ec4899"
+            onPress={() => router.push("./games/word-polarity")}
+            delay={1500}
+          />
           <GameCard
             title="Rocket Synonyme"
             description="Match synonyms to improve vocabulary."
