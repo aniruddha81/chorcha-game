@@ -71,7 +71,7 @@ export const MascotFeedback = ({
   text,
   mood = "explain",
   showBg = true,
-  onClose = () => {},
+  onClose = () => { },
 }: MascotFeedbackProps) => {
   const [displayedText, setDisplayedText] = useState("");
 
@@ -151,10 +151,13 @@ export const MascotFeedback = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 250, // Height to accommodate mascot + bubble
+    flex: 1,
+    maxHeight: 200,
+    minHeight: 140,
     justifyContent: "flex-end",
     alignItems: "center",
     width: "100%",
+    overflow: "hidden",
   },
   svgBackground: {
     position: "absolute",
@@ -171,8 +174,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   mascotContainer: {
-    width: 150,
-    height: 150,
+    width: 120,
+    height: 120,
   },
   mascotImage: {
     width: "100%",
@@ -180,16 +183,16 @@ const styles = StyleSheet.create({
   },
   bubbleContainer: {
     flex: 1,
-    marginBottom: 80, // Lifts bubble up
-    marginLeft: -10, // Overlaps mascot slightly like reference
+    marginBottom: 50,
+    marginLeft: -10,
     position: "relative",
   },
   bubble: {
     backgroundColor: "#18181b",
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    minHeight: 60,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    minHeight: 45,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -209,7 +212,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: "#ffffff",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "500",
     textAlign: "center",
   },

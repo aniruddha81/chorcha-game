@@ -329,6 +329,7 @@ export default function WeightBalanceGame() {
                     }
                     onRetry={status === "WIN" ? nextLevel : retryLevel}
                     onHome={() => router.back()}
+                    onExit={() => router.back()}
                     mascotMessage={
                         status === "WIN"
                             ? "Perfect balance! Well done!"

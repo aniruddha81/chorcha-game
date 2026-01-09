@@ -621,6 +621,7 @@ export default function ZipGameScreen() {
                scorePercentage={Math.min(100, Math.round((score / (ZIP_LEVELS.length * 100)) * 100))}
                onRetry={restartGame}
                onHome={() => router.back()}
+               onExit={() => router.back()}
             />
          )}
 

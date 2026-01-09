@@ -466,12 +466,12 @@ export default function IconMemoryGame() {
                 />
             </View>
 
-            {/* Game Over / Success - Use GameResult Component */}
             {(status === "GAME_OVER" || status === "SUCCESS") && (
                 <GameResult
                     scorePercentage={Math.round(((currentLayer - 1) / TOTAL_LAYERS) * 100)}
                     onRetry={initializeGame}
                     onHome={() => router.back()}
+                    onExit={() => router.back()}
                     mascotMessage={
                         status === "SUCCESS"
                             ? "Perfect memory! You're amazing!"

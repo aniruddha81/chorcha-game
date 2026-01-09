@@ -662,6 +662,7 @@ export default function MazeEscapeGame() {
                         }
                         onRetry={status === "won" ? handleNextLevel : handleRetry}
                         onHome={() => router.back()}
+                        onExit={() => router.back()}
                         mascotMessage={
                             status === "won"
                                 ? "Maze escaped! Great navigation!"
