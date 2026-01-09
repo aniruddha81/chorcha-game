@@ -1,4 +1,4 @@
-import { MascotFeedback } from "@/components/MascotFeedback";
+import { MascotFeedback, MascotMood } from "@/components/MascotFeedback";
 import { PieTimer } from "@/components/PieTimer";
 import { getFeedbackMessage } from "@/utils/feedbackMessages";
 import * as Haptics from "expo-haptics";
@@ -38,6 +38,7 @@ export default function ColorMatchGame() {
   const [mascotMessage, setMascotMessage] = useState(
     "Does the word of left side match the color of right side?"
   );
+  const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
   const [correctStreak, setCorrectStreak] = useState(0);
   const [wrongStreak, setWrongStreak] = useState(0);
 
@@ -116,6 +117,7 @@ export default function ColorMatchGame() {
       setButtonColor("#22c55e"); // Green for correct
       setScore((s) => s + BASE_SCORE);
       setLastAdded(BASE_SCORE);
+      setMascotMood("happy");
 
       // Update streaks
       setCorrectStreak((prev) => prev + 1);
@@ -124,6 +126,7 @@ export default function ColorMatchGame() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
       setButtonColor("#ef4444"); // Red for incorrect
+      setMascotMood("angry");
 
       // Deduct 300 points only if current score is greater than 300
       if (score > 300) {
@@ -237,7 +240,7 @@ export default function ColorMatchGame() {
 
       {/* Mascot - Always visible */}
       <View style={styles.mascotSpace}>
-        <MascotFeedback text={mascotMessage} />
+        <MascotFeedback text={mascotMessage} mood={mascotMood} />
       </View>
     </View>
   );

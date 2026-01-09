@@ -463,6 +463,13 @@ export default function IconMemoryGame() {
                                 ? "Woah good luck next time."
                                 : "Tap an icon you haven't clicked!"
                     }
+                    mood={
+                        feedbackIcon?.state === "correct"
+                            ? "happy"
+                            : feedbackIcon?.state === "wrong"
+                                ? "angry"
+                                : "explain"
+                    }
                 />
             </View>
 

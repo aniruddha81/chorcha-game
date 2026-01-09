@@ -1,5 +1,5 @@
 import { GameResult } from "@/components/GameResult";
-import { MascotFeedback } from "@/components/MascotFeedback";
+import { MascotFeedback, MascotMood } from "@/components/MascotFeedback";
 import { PieTimer } from "@/components/PieTimer";
 import { COLORS } from "@/constants/gameConfig";
 import {
@@ -322,6 +322,7 @@ export default function MazeEscapeGame() {
     const [moveCount, setMoveCount] = useState(0);
     const [playerPos, setPlayerPos] = useState<Position>({ r: 0, c: 0 });
     const [mascotMessage, setMascotMessage] = useState(MASCOT_MESSAGES.idle);
+    const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
     const [lastSwipeDirection, setLastSwipeDirection] = useState<Direction | null>(null);
 
     // Animation values
@@ -409,6 +410,7 @@ export default function MazeEscapeGame() {
             stopTimer();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             setMascotMessage(getRandomMessage(MASCOT_MESSAGES.lost));
+            setMascotMood("angry");
             setStatus("lost");
         }
     }, [timeRemaining, status, stopTimer]);
@@ -420,6 +422,7 @@ export default function MazeEscapeGame() {
         // Hurry messages when time is low
         if (timeRemaining <= GAME_CONFIG.hurryTimeThreshold && timeRemaining > 0) {
             setMascotMessage(getRandomMessage(MASCOT_MESSAGES.hurry));
+            setMascotMood("angry");
             return;
         }
 
@@ -427,6 +430,7 @@ export default function MazeEscapeGame() {
         const distance = calculateDistance(playerPos, endPos);
         if (distance <= 2) {
             setMascotMessage(getRandomMessage(MASCOT_MESSAGES.almostThere));
+            setMascotMood("happy");
             return;
         }
 
@@ -450,6 +454,7 @@ export default function MazeEscapeGame() {
 
                 setScore((prev) => prev + Math.max(finalScore, 10));
                 setMascotMessage(getRandomMessage(MASCOT_MESSAGES.won));
+                setMascotMood("happy");
                 setStatus("won");
 
                 // Board celebration animation
@@ -673,7 +678,7 @@ export default function MazeEscapeGame() {
             </View>
 
             {/* Mascot Feedback - Only show during gameplay */}
-            {status === "playing" && <MascotFeedback text={mascotMessage} />}
+            {status === "playing" && <MascotFeedback text={mascotMessage} mood={mascotMood} />}
         </View>
     );
 }

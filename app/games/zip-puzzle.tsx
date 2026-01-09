@@ -1,6 +1,6 @@
 import { AnimatedNumberBadge } from "@/components/AnimatedNumberBadge";
 import { GameResult } from "@/components/GameResult";
-import { MascotFeedback } from "@/components/MascotFeedback";
+import { MascotFeedback, MascotMood } from "@/components/MascotFeedback";
 import { SubtleConfetti } from "@/components/SubtleConfetti";
 import { ZipCell } from "@/components/ZipCell";
 import { ZIP_COLORS, ZIP_LEVELS } from "@/constants/zipGameConfig";
@@ -43,6 +43,7 @@ export default function ZipGameScreen() {
    const [score, setScore] = useState(0);
    const [status, setStatus] = useState<GameStatus>("PLAYING");
    const [mascotMessage, setMascotMessage] = useState("");
+   const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
 
    // Path state: array of cell indices the player has drawn through
    const [path, setPath] = useState<number[]>([]);
@@ -260,6 +261,7 @@ export default function ZipGameScreen() {
                   setStatus("LEVEL_COMPLETE");
                   setScore((s) => s + currentLevel.level * 100);
                   setMascotMessage("Awesome! You completed the level!");
+                  setMascotMood("happy");
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                }
             }
@@ -320,6 +322,7 @@ export default function ZipGameScreen() {
          setPath([]);
          setStatus("PLAYING");
          setMascotMessage("");
+         setMascotMood("explain");
       } else {
          // All levels completed - show GameResult
          setStatus("ALL_COMPLETE");
@@ -611,7 +614,7 @@ export default function ZipGameScreen() {
                exiting={SlideOutDown.duration(300)}
                style={styles.mascotOverlay}
             >
-               <MascotFeedback text={mascotMessage} />
+               <MascotFeedback text={mascotMessage} mood={mascotMood} />
             </Animated.View>
          ) : null}
 

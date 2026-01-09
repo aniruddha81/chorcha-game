@@ -1,5 +1,5 @@
 import { Grid } from "@/components/Grid";
-import { MascotFeedback } from "@/components/MascotFeedback";
+import { MascotFeedback, MascotMood } from "@/components/MascotFeedback";
 import { COLORS, LEVELS } from "@/constants/gameConfig";
 import { getFeedbackMessage } from "@/utils/feedbackMessages";
 import * as Haptics from "expo-haptics";
@@ -27,6 +27,7 @@ export default function GameScreen() {
   const [score, setScore] = useState(0);
   const [status, setStatus] = useState<GameStatus>("IDLE");
   const [mascotMessage, setMascotMessage] = useState("");
+  const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
   const [correctStreak, setCorrectStreak] = useState(0);
   const [wrongStreak, setWrongStreak] = useState(0);
 
@@ -126,6 +127,7 @@ export default function GameScreen() {
       // Success - Add points only if all correct
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setScore((s) => s + currentLevelConfig.level * 100);
+      setMascotMood("happy");
 
       // Update streaks
       setCorrectStreak((prev) => prev + 1);
@@ -160,6 +162,7 @@ export default function GameScreen() {
       // Failure - Show correct answer but no points added
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setLives((l) => l - 1);
+      setMascotMood("angry");
 
       // Update streaks
       setWrongStreak((prev) => prev + 1);
@@ -242,7 +245,7 @@ export default function GameScreen() {
 
       {/* Mascot - Always visible */}
       <View style={styles.mascotContainer}>
-        <MascotFeedback text={mascotMessage} />
+        <MascotFeedback text={mascotMessage} mood={mascotMood} />
       </View>
     </SafeAreaView>
   );

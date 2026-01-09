@@ -4,7 +4,7 @@
  * New design matching the reference with clean UI and mascot feedback
  */
 import { GameResult } from "@/components/GameResult";
-import { MascotFeedback } from "@/components/MascotFeedback";
+import { MascotFeedback, MascotMood } from "@/components/MascotFeedback";
 import {
     AvailableWeights,
     BlockData,
@@ -49,6 +49,7 @@ export default function WeightBalanceGame() {
     const [isShaking, setIsShaking] = useState(false);
     const [targetPerSide, setTargetPerSide] = useState(0);
     const [mascotMessage, setMascotMessage] = useState(MASCOT_MESSAGES.initial);
+    const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
 
     const levelConfig = WEIGHT_BALANCE_LEVELS[currentLevel];
 
@@ -103,6 +104,7 @@ export default function WeightBalanceGame() {
                     setMascotMessage(
                         MASCOT_MESSAGES.lose[Math.floor(Math.random() * MASCOT_MESSAGES.lose.length)]
                     );
+                    setMascotMood("angry");
                     return 0;
                 }
                 return prev - 1;
@@ -193,6 +195,7 @@ export default function WeightBalanceGame() {
             setMascotMessage(
                 MASCOT_MESSAGES.win[Math.floor(Math.random() * MASCOT_MESSAGES.win.length)]
             );
+            setMascotMood("happy");
         } else {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             setIsShaking(true);
@@ -202,6 +205,7 @@ export default function WeightBalanceGame() {
                 setMascotMessage(
                     MASCOT_MESSAGES.lose[Math.floor(Math.random() * MASCOT_MESSAGES.lose.length)]
                 );
+                setMascotMood("angry");
             }, 500);
         }
     }, [allBlocksUsed, isBalanced, levelConfig, timeLeft]);
@@ -317,7 +321,7 @@ export default function WeightBalanceGame() {
             <View style={styles.spacer} />
 
             {/* Mascot Feedback - Only show during gameplay */}
-            {status === "PLAYING" && <MascotFeedback text={mascotMessage} />}
+            {status === "PLAYING" && <MascotFeedback text={mascotMessage} mood={mascotMood} />}
 
             {/* Game Result Screen */}
             {(status === "WIN" || status === "LOSE") && (

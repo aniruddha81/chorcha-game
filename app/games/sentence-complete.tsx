@@ -22,7 +22,7 @@ import Animated, {
    withSpring
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MascotFeedback } from "../../components/MascotFeedback";
+import { MascotFeedback, MascotMood } from "../../components/MascotFeedback";
 
 const DESIGN_COLORS = {
    background: "#EFEEEE",
@@ -147,6 +147,7 @@ export default function SentenceCompleteGame() {
    const [showResult, setShowResult] = useState(false);
    const [isGameOver, setIsGameOver] = useState(false);
    const [mascotMessage, setMascotMessage] = useState("Fill in the sentence with the correct word");
+   const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
    const [scoreIncrement, setScoreIncrement] = useState(0);
 
    // Shuffle questions on mount
@@ -167,6 +168,7 @@ export default function SentenceCompleteGame() {
       // Reset mascot message for new question
       if (!showResult) {
          setMascotMessage("Fill in the sentence with the correct word");
+         setMascotMood("explain");
          setScoreIncrement(0);
       }
    }, [currentQuestionIndex, showResult]);
@@ -198,12 +200,14 @@ export default function SentenceCompleteGame() {
             const successMessages = ["This was the correct answer", "Wow nice one !", "Great job !"];
             const randomMsg = successMessages[Math.floor(Math.random() * successMessages.length)];
             setMascotMessage(randomMsg);
+            setMascotMood("happy");
 
             setScoreIncrement(500);
             setScore((prev) => prev + 500);
          } else {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             setMascotMessage("That's not correct");
+            setMascotMood("angry");
             setScoreIncrement(0);
          }
       },
@@ -344,7 +348,7 @@ export default function SentenceCompleteGame() {
          )}
 
          {/* Mascot Feedback */}
-         <MascotFeedback text={mascotMessage} />
+         <MascotFeedback text={mascotMessage} mood={mascotMood} />
       </Pressable>
    );
 }

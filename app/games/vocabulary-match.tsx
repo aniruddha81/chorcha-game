@@ -1,4 +1,4 @@
-import { MascotFeedback } from "@/components/MascotFeedback";
+import { MascotFeedback, MascotMood } from "@/components/MascotFeedback";
 import { PieTimer } from "@/components/PieTimer";
 import { WORD_PAIRS } from "@/constants/wordPairs";
 import { getFeedbackMessage } from "@/utils/feedbackMessages";
@@ -41,6 +41,7 @@ export default function VocabularyMatchGame() {
   const [mascotMessage, setMascotMessage] = useState(
     "Does the sound match the image?"
   );
+  const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
   const [hasPlayedAudio, setHasPlayedAudio] = useState(false);
   const [correctStreak, setCorrectStreak] = useState(0);
   const [wrongStreak, setWrongStreak] = useState(0);
@@ -182,6 +183,7 @@ export default function VocabularyMatchGame() {
       setButtonColor("#22c55e"); // Green for correct
       setScore((s) => s + BASE_SCORE);
       setLastAdded(BASE_SCORE);
+      setMascotMood("happy");
 
       // Update streaks
       setCorrectStreak((prev) => prev + 1);
@@ -189,6 +191,7 @@ export default function VocabularyMatchGame() {
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setButtonColor("#ef4444"); // Red for incorrect
+      setMascotMood("angry");
 
       // Deduct 300 points only if current score is greater than 300
       if (score > PENALTY) {
@@ -323,7 +326,7 @@ export default function VocabularyMatchGame() {
 
       {/* Mascot - Always visible */}
       <View style={styles.mascotSpace}>
-        <MascotFeedback text={mascotMessage} />
+        <MascotFeedback text={mascotMessage} mood={mascotMood} />
       </View>
     </View>
   );
