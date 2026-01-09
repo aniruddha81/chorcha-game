@@ -38,14 +38,7 @@ const games: GameConfig[] = [
     iconLib: "Ionicons",
     route: "./games/memory-grid",
   },
-  {
-    title: "Match It",
-    tag: "Speed run",
-    color: "#dbeafe", // pastel blue (blue-100/200 mix)
-    icon: "color-palette",
-    iconLib: "Ionicons",
-    route: "./games/color-match",
-  },
+
   {
     title: "Find it",
     tag: "Recall",
@@ -87,12 +80,12 @@ const games: GameConfig[] = [
     route: "./games/sentence-complete",
   },
   {
-    title: "Balance it",
-    tag: "Puzzle",
-    color: "#fef9c3", // pastel yellow
-    icon: "scale-balance",
-    iconLib: "MaterialCommunityIcons",
-    route: "./games/weight-balance",
+      title: "Match It",
+      tag: "Speed run",
+      color: "#dbeafe", // pastel blue (blue-100/200 mix)
+      icon: "color-palette",
+      iconLib: "Ionicons",
+      route: "./games/color-match",
   },
   {
     title: "Zip Puzzle",
@@ -101,6 +94,15 @@ const games: GameConfig[] = [
     icon: "link",
     iconLib: "Ionicons",
     route: "./games/zip-puzzle",
+  },
+
+  {
+    title: "Balance it",
+    tag: "Puzzle",
+    color: "#fef9c3", // pastel yellow
+    icon: "scale-balance",
+    iconLib: "MaterialCommunityIcons",
+    route: "./games/weight-balance",
   },
   {
     title: "Vocau",

@@ -7,6 +7,9 @@ export interface LevelConfig {
   gridSize: number; // percentage of screen width or fixed size
 }
 
+// Maximum grid size - cells will scale to fit within this
+export const MAX_GRID_SIZE = 320;
+
 export const LEVELS: LevelConfig[] = [
   {
     level: 1,
@@ -14,7 +17,7 @@ export const LEVELS: LevelConfig[] = [
     cols: 3,
     activeCells: 3,
     showDuration: 4000,
-    gridSize: 300,
+    gridSize: MAX_GRID_SIZE,
   },
   {
     level: 2,
@@ -22,7 +25,7 @@ export const LEVELS: LevelConfig[] = [
     cols: 3,
     activeCells: 4,
     showDuration: 1500,
-    gridSize: 300,
+    gridSize: MAX_GRID_SIZE,
   },
   {
     level: 3,
@@ -30,7 +33,7 @@ export const LEVELS: LevelConfig[] = [
     cols: 3,
     activeCells: 4,
     showDuration: 1800,
-    gridSize: 320,
+    gridSize: MAX_GRID_SIZE,
   },
   {
     level: 4,
@@ -38,7 +41,7 @@ export const LEVELS: LevelConfig[] = [
     cols: 4,
     activeCells: 5,
     showDuration: 2000,
-    gridSize: 320,
+    gridSize: MAX_GRID_SIZE,
   },
   {
     level: 5,
@@ -46,7 +49,7 @@ export const LEVELS: LevelConfig[] = [
     cols: 4,
     activeCells: 6,
     showDuration: 2000,
-    gridSize: 340,
+    gridSize: MAX_GRID_SIZE,
   },
   {
     level: 6,
@@ -54,7 +57,7 @@ export const LEVELS: LevelConfig[] = [
     cols: 4,
     activeCells: 6,
     showDuration: 2200,
-    gridSize: 340,
+    gridSize: MAX_GRID_SIZE,
   },
   {
     level: 7,
@@ -62,7 +65,7 @@ export const LEVELS: LevelConfig[] = [
     cols: 5,
     activeCells: 7,
     showDuration: 2500,
-    gridSize: 350,
+    gridSize: MAX_GRID_SIZE,
   },
   {
     level: 8,
@@ -70,7 +73,7 @@ export const LEVELS: LevelConfig[] = [
     cols: 5,
     activeCells: 8,
     showDuration: 2500,
-    gridSize: 350,
+    gridSize: MAX_GRID_SIZE,
   },
   {
     level: 9,
@@ -78,7 +81,7 @@ export const LEVELS: LevelConfig[] = [
     cols: 5,
     activeCells: 9,
     showDuration: 2800,
-    gridSize: 360,
+    gridSize: MAX_GRID_SIZE,
   },
   {
     level: 10,
@@ -86,12 +89,12 @@ export const LEVELS: LevelConfig[] = [
     cols: 6,
     activeCells: 10,
     showDuration: 3000,
-    gridSize: 360,
+    gridSize: MAX_GRID_SIZE,
   },
 ];
 
 export const COLORS = {
-  background: "#f0f0f0", 
+  background: "#f0f0f0",
   card: "#7b7b87", // zinc-900
   primary: "#22d3ee", // cyan-400
   success: "#4ade80", // green-400

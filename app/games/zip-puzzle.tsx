@@ -8,14 +8,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-   Dimensions,
-   Platform,
-   Pressable,
-   StyleSheet,
-   Text,
-   View
-} from "react-native";
+import { Dimensions, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
    FadeIn,
@@ -24,7 +17,7 @@ import Animated, {
    useSharedValue,
    withSequence,
    withSpring,
-   withTiming
+   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
@@ -42,17 +35,10 @@ export default function ZipGameScreen() {
    const [status, setStatus] = useState<GameStatus>("PLAYING");
    const [mascotMessage, setMascotMessage] = useState("");
    const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
+   const [canContinue, setCanContinue] = useState(false);
 
    // Path state: array of cell indices the player has drawn through
    const [path, setPath] = useState<number[]>([]);
-
-   // Grid layout reference for hit testing
-   const [gridLayout, setGridLayout] = useState<{
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-   } | null>(null);
 
    const gridRef = useRef<View>(null);
 
@@ -112,20 +98,19 @@ export default function ZipGameScreen() {
       return lastHitNumber + 1;
    }, [path, currentLevel]);
 
-   // Get cell index from coordinates
+   // Get cell index from relative coordinates (relative to grid container)
    const getCellFromPosition = useCallback(
-      (x: number, y: number): number | null => {
-         if (!gridLayout) return null;
+      (relX: number, relY: number): number | null => {
+         // Adjust for the 1px border
+         const adjustedX = relX - 1;
+         const adjustedY = relY - 1;
 
-         const relX = x - gridLayout.x;
-         const relY = y - gridLayout.y;
-
-         if (relX < 0 || relX >= gridWidth || relY < 0 || relY >= gridHeight) {
+         if (adjustedX < 0 || adjustedX >= gridWidth || adjustedY < 0 || adjustedY >= gridHeight) {
             return null;
          }
 
-         const col = Math.floor(relX / cellSize);
-         const row = Math.floor(relY / cellSize);
+         const col = Math.floor(adjustedX / cellSize);
+         const row = Math.floor(adjustedY / cellSize);
 
          if (row < 0 || row >= currentLevel.rows || col < 0 || col >= currentLevel.cols) {
             return null;
@@ -133,7 +118,7 @@ export default function ZipGameScreen() {
 
          return row * currentLevel.cols + col;
       },
-      [gridLayout, gridWidth, gridHeight, cellSize, currentLevel]
+      [gridWidth, gridHeight, cellSize, currentLevel],
    );
 
    // Check if two cells are adjacent (horizontally or vertically)
@@ -179,7 +164,7 @@ export default function ZipGameScreen() {
 
          return true;
       },
-      [path, getStartCell, getNextRequiredNumber, currentLevel]
+      [path, getStartCell, getNextRequiredNumber, currentLevel],
    );
 
    // Check if the current path is a valid solution
@@ -212,12 +197,18 @@ export default function ZipGameScreen() {
             dismissMascot();
          }
       },
-      [path, dismissMascot]
+      [path, dismissMascot],
    );
 
    // Add cell to path
    const addToPath = useCallback(
       (cellIndex: number) => {
+         if (status === "LEVEL_COMPLETE") {
+            if (canContinue) {
+               nextLevel();
+            }
+            return;
+         }
          if (status !== "PLAYING") return;
 
          dismissMascot();
@@ -232,31 +223,31 @@ export default function ZipGameScreen() {
             const newPath = [...path, cellIndex];
             setPath(newPath);
 
-            const cellNumber = currentLevel.numberedCells.get(cellIndex);
-            if (cellNumber !== undefined) {
-               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            } else {
-               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }
+           const cellNumber = currentLevel.numberedCells.get(cellIndex);
+           if (cellNumber !== undefined) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          }
 
-            // Check win after adding
-            if (newPath.length === totalCells) {
-               // Verify we hit all numbers correctly
-               let lastNumber = 0;
-               let valid = true;
-               for (const idx of newPath) {
-                  const num = currentLevel.numberedCells.get(idx);
-                  if (num !== undefined) {
-                     if (num !== lastNumber + 1) {
-                        valid = false;
-                        break;
-                     }
-                     lastNumber = num;
-                  }
-               }
+           // Check win after adding
+           if (newPath.length === totalCells) {
+              // Verify we hit all numbers correctly
+              let lastNumber = 0;
+              let valid = true;
+              for (const idx of newPath) {
+                 const num = currentLevel.numberedCells.get(idx);
+                 if (num !== undefined) {
+                    if (num !== lastNumber + 1) {
+                       valid = false;
+                       break;
+                    }
+                    lastNumber = num;
+                 }
+              }
 
-               if (valid && lastNumber === maxNumber) {
-                  setStatus("LEVEL_COMPLETE");
+            if (valid && lastNumber === maxNumber) {
+               setStatus("LEVEL_COMPLETE");
+              setCanContinue(false);
+              setTimeout(() => setCanContinue(true), 600);
                   setScore((s) => s + currentLevel.level * 100);
                   setMascotMessage("Awesome! You completed the level!");
                   setMascotMood("happy");
@@ -267,38 +258,39 @@ export default function ZipGameScreen() {
       },
       [
          status,
-         path,
-         canAddToPath,
-         handleBacktrack,
-         totalCells,
-         currentLevel,
-         maxNumber,
-         dismissMascot,
-      ]
+        canContinue,
+        path,
+        canAddToPath,
+        handleBacktrack,
+        totalCells,
+        currentLevel,
+        maxNumber,
+        dismissMascot,
+      ],
    );
 
-   // Pan gesture for drawing
+   // Pan gesture for drawing - uses relative coordinates (e.x, e.y)
    const panGesture = Gesture.Pan()
       .minDistance(0)
-      .runOnJS(true) // Run on JS thread to access gridLayout state safely
+      .runOnJS(true)
       .onStart((e) => {
-         const cell = getCellFromPosition(e.absoluteX, e.absoluteY);
-         if (cell !== null) {
-            addToPath(cell);
-         }
-      })
+        const cell = getCellFromPosition(e.x, e.y);
+        if (cell !== null) {
+           addToPath(cell);
+        }
+     })
       .onUpdate((e) => {
-         const cell = getCellFromPosition(e.absoluteX, e.absoluteY);
-         if (cell !== null) {
-            addToPath(cell);
-         }
-      });
+        const cell = getCellFromPosition(e.x, e.y);
+        if (cell !== null) {
+           addToPath(cell);
+        }
+     });
 
-   // Tap gesture to start from cell 1
+   // Tap gesture to start from cell 1 - uses relative coordinates
    const tapGesture = Gesture.Tap()
       .runOnJS(true)
       .onEnd((e) => {
-         const cell = getCellFromPosition(e.absoluteX, e.absoluteY);
+         const cell = getCellFromPosition(e.x, e.y);
          if (cell !== null) {
             addToPath(cell);
          }
@@ -388,7 +380,7 @@ export default function ZipGameScreen() {
          );
          scoreScale.value = withSequence(
             withSpring(1.15, { damping: 10 }),
-            withSpring(1, { damping: 10 })
+            withSpring(1, { damping: 10 }),
          );
       } else {
          bonusOpacity.value = 0;
@@ -413,10 +405,7 @@ export default function ZipGameScreen() {
    }, [status, nextLevel]);
 
    return (
-      <Pressable
-         style={[styles.container, { paddingTop: insets.top }]}
-         onPress={handleScreenTap}
-      >
+      <Pressable style={[styles.container, { paddingTop: insets.top }]} onPress={handleScreenTap}>
          <StatusBar style="dark" />
 
          {/* Instructions */}
@@ -428,40 +417,34 @@ export default function ZipGameScreen() {
          </Animated.View>
 
          {/* Grid Container */}
-         <GestureDetector gesture={composedGesture}>
+         <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.gridWrapper}>
+            {/* Header moved here */}
             <Animated.View
-               entering={FadeInDown.delay(200).springify()}
-               style={styles.gridWrapper}
+               entering={FadeInDown.delay(100)}
+               style={[
+                  styles.header,
+                  {
+                     width: gridWidth,
+                     paddingHorizontal: 0,
+                     paddingTop: 0,
+                     paddingBottom: 8,
+                  },
+               ]}
             >
-               {/* Header moved here */}
-               <Animated.View
-                  entering={FadeInDown.delay(100)}
-                  style={[
-                     styles.header,
-                     {
-                        width: gridWidth,
-                        paddingHorizontal: 0,
-                        paddingTop: 0,
-                        paddingBottom: 8
-                     }
-                  ]}
-               >
-                  <View style={styles.levelContainer}>
-                     <Text style={styles.headerText}>Level {currentLevel.level}</Text>
-                  </View>
-                  <View style={styles.scoreContainer}>
-                     <Animated.Text
-                        style={[
-                           styles.scoreBonusText,
-                           bonusAnimatedStyle
-                        ]}
-                     >
-                        +{currentLevel.level * 100}
-                     </Animated.Text>
-                     <Animated.Text style={[styles.headerText, scoreAnimatedStyle]}>{score} pt</Animated.Text>
-                  </View>
-               </Animated.View>
+               <View style={styles.levelContainer}>
+                  <Text style={styles.headerText}>Level {currentLevel.level}</Text>
+               </View>
+               <View style={styles.scoreContainer}>
+                  <Animated.Text style={[styles.scoreBonusText, bonusAnimatedStyle]}>
+                     +{currentLevel.level * 100}
+                  </Animated.Text>
+                  <Animated.Text style={[styles.headerText, scoreAnimatedStyle]}>
+                     {score} pt
+                  </Animated.Text>
+               </View>
+            </Animated.View>
 
+            <GestureDetector gesture={composedGesture}>
                <View
                   ref={gridRef}
                   style={[
@@ -471,36 +454,6 @@ export default function ZipGameScreen() {
                         height: gridHeight + 2,
                      },
                   ]}
-                  onLayout={() => {
-                     // Delay measurement to ensure entering animation is complete
-                     setTimeout(() => {
-                        if (gridRef.current) {
-                           if (Platform.OS === 'web') {
-                              // Web: use getBoundingClientRect
-                              const element = gridRef.current as unknown as HTMLElement;
-                              if (element.getBoundingClientRect) {
-                                 const rect = element.getBoundingClientRect();
-                                 setGridLayout({
-                                    x: rect.left + 1,
-                                    y: rect.top + 1,
-                                    width: gridWidth,
-                                    height: gridHeight,
-                                 });
-                              }
-                           } else {
-                              // Native: use measureInWindow
-                              gridRef.current.measureInWindow((x, y) => {
-                                 setGridLayout({
-                                    x: x + 1,
-                                    y: y + 1,
-                                    width: gridWidth,
-                                    height: gridHeight,
-                                 });
-                              });
-                           }
-                        }
-                     }, 400); // Wait for FadeInDown animation to complete
-                  }}
                >
                   {/* Grid cells */}
                   <View style={styles.grid}>
@@ -571,16 +524,13 @@ export default function ZipGameScreen() {
                      })}
                   </View>
                </View>
-            </Animated.View>
-         </GestureDetector>
+            </GestureDetector>
+         </Animated.View>
 
          {/* Tap to continue hint */}
          <Animated.Text
             entering={FadeIn.delay(300)}
-            style={[
-               styles.tapHint,
-               { opacity: status === "LEVEL_COMPLETE" ? 1 : 0 }
-            ]}
+            style={[styles.tapHint, { opacity: status === "LEVEL_COMPLETE" ? 1 : 0 }]}
          >
             Tap anywhere to continue
          </Animated.Text>
@@ -590,9 +540,7 @@ export default function ZipGameScreen() {
 
          {/* Mascot Overlay - Fixed, always visible during gameplay */}
          {status !== "ALL_COMPLETE" ? (
-            <View
-               style={styles.mascotOverlay}
-            >
+            <View style={styles.mascotOverlay}>
                <MascotFeedback text={mascotMessage} mood={mascotMood} />
             </View>
          ) : null}
@@ -606,7 +554,6 @@ export default function ZipGameScreen() {
                onExit={() => router.back()}
             />
          )}
-
       </Pressable>
    );
 }
@@ -673,7 +620,7 @@ const styles = StyleSheet.create({
       shadowOpacity: 0.1,
       shadowRadius: 12,
       elevation: 5,
-      overflow: 'hidden', // To clip the content to rounded corners
+      overflow: "hidden", // To clip the content to rounded corners
    },
    pathOverlay: {
       position: "absolute",
@@ -694,8 +641,8 @@ const styles = StyleSheet.create({
       flexDirection: "row",
    },
    tapHint: {
-      textAlign: 'center',
-      color: '#71717a',
+      textAlign: "center",
+      color: "#71717a",
       fontSize: 14,
       marginTop: 16,
       marginBottom: 24,

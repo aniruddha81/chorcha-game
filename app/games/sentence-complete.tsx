@@ -1,25 +1,17 @@
-import {
-   SENTENCE_QUESTIONS,
-   type SentenceQuestion
-} from "@/constants/sentenceGameData";
+import { GameResult } from "@/components/GameResult";
+import { SENTENCE_QUESTIONS, type SentenceQuestion } from "@/constants/sentenceGameData";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-   Pressable,
-   StyleSheet,
-   Text,
-   TouchableOpacity,
-   View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
    FadeIn,
    FadeInDown,
    useAnimatedStyle,
    useSharedValue,
    withSequence,
-   withSpring
+   withSpring,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MascotFeedback, MascotMood } from "../../components/MascotFeedback";
@@ -67,10 +59,7 @@ const OptionButton: React.FC<OptionButtonProps> = ({
 
    useEffect(() => {
       if (showResult && isSelected) {
-         scale.value = withSequence(
-            withSpring(1.05, { damping: 10 }),
-            withSpring(1, { damping: 10 })
-         );
+         scale.value = withSequence(withSpring(1.05, { damping: 10 }), withSpring(1, { damping: 10 }));
       }
    }, [showResult, isSelected, scale]);
 
@@ -155,8 +144,7 @@ export default function SentenceCompleteGame() {
       return [...SENTENCE_QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 10);
    }, []);
 
-   const currentQuestion: SentenceQuestion | undefined =
-      shuffledQuestions[currentQuestionIndex];
+   const currentQuestion: SentenceQuestion | undefined = shuffledQuestions[currentQuestionIndex];
 
    // Shuffle options for current question
    const shuffledOptions = useMemo(() => {
@@ -196,11 +184,11 @@ export default function SentenceCompleteGame() {
          if (isCorrect) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-            // Random success message
-            const successMessages = ["This was the correct answer", "Wow nice one !", "Great job !"];
-            const randomMsg = successMessages[Math.floor(Math.random() * successMessages.length)];
-            setMascotMessage(randomMsg);
-            setMascotMood("happy");
+           // Random success message
+           const successMessages = ["This was the correct answer", "Wow nice one !", "Great job !"];
+           const randomMsg = successMessages[Math.floor(Math.random() * successMessages.length)];
+           setMascotMessage(randomMsg);
+           setMascotMood("happy");
 
             setScoreIncrement(500);
             setScore((prev) => prev + 500);
@@ -211,7 +199,7 @@ export default function SentenceCompleteGame() {
             setScoreIncrement(0);
          }
       },
-      [showResult, currentQuestion]
+      [showResult, currentQuestion],
    );
 
    const restartGame = useCallback(() => {
@@ -233,26 +221,28 @@ export default function SentenceCompleteGame() {
       // Only show the answer if user answered correctly
       const shouldShowAnswer = showResult && isCorrect;
 
-      // Generate blank spaces that match the answer length for layout consistency
-      const blankPlaceholder = answer.replace(/./g, ' ');
+      // Generate visible underscores for the blank, with a minimum width
+      const minBlankLength = Math.max(answer.length, 6);
+      const blankPlaceholder = "_".repeat(minBlankLength);
 
       return (
          <Text style={styles.sentenceText}>
             {parts[0]}
-            <Text style={{
-               textDecorationLine: 'underline',
-               textDecorationColor: shouldShowAnswer ? DESIGN_COLORS.correct : '#000',
-               color: shouldShowAnswer ? DESIGN_COLORS.correct : DESIGN_COLORS.text,
-               fontWeight: shouldShowAnswer ? 'bold' : '400',
-            }}>
-               {shouldShowAnswer ? answer : blankPlaceholder}
-            </Text>
-            {isWrong && <Text style={styles.crossText}> ×</Text>}
-            {parts[1]}
-         </Text>
-      );
-   }
-
+           <Text
+              style={{
+                 textDecorationLine: "underline",
+                 textDecorationColor: shouldShowAnswer ? DESIGN_COLORS.correct : "#000",
+                 color: shouldShowAnswer ? DESIGN_COLORS.correct : DESIGN_COLORS.text,
+                 fontWeight: shouldShowAnswer ? "bold" : "400",
+              }}
+           >
+              {shouldShowAnswer ? answer : blankPlaceholder}
+           </Text>
+           {isWrong && <Text style={styles.crossText}> ×</Text>}
+           {parts[1]}
+        </Text>
+     );
+   };
 
    // Handle tap anywhere to proceed (only when result is showing)
    const handleScreenTap = useCallback(() => {
@@ -270,28 +260,22 @@ export default function SentenceCompleteGame() {
    }
 
    if (isGameOver) {
+      // Calculate score percentage (starting score 1500, max possible 1500 + 10*500 = 6500)
+      const maxPossibleScore = 6500;
+      const scorePercentage = Math.min(100, Math.round((score / maxPossibleScore) * 100));
+
       return (
-         <View style={[styles.container, { paddingTop: insets.top }]}>
-            <StatusBar style="dark" />
-            <View style={styles.gameOverContainer}>
-               <Text style={styles.gameOverTitle}>Level Complete!</Text>
-               <Text style={styles.finalScore}>{score} pt</Text>
-               <TouchableOpacity style={styles.retryButton} onPress={restartGame}>
-                  <Text style={styles.retryButtonText}>Play Again</Text>
-               </TouchableOpacity>
-               <TouchableOpacity style={styles.homeButton} onPress={() => router.back()}>
-                  <Text style={styles.homeButtonText}>Home</Text>
-               </TouchableOpacity>
-            </View>
-         </View>
+         <GameResult
+            scorePercentage={scorePercentage}
+            onRetry={restartGame}
+            onHome={() => router.back()}
+            mascotMessage={`Level complete! You scored ${score} points!`}
+         />
       );
    }
 
    return (
-      <Pressable
-         style={[styles.container, { paddingTop: insets.top }]}
-         onPress={handleScreenTap}
-      >
+      <Pressable style={[styles.container, { paddingTop: insets.top }]} onPress={handleScreenTap}>
          <StatusBar style="dark" />
 
          {/* Header */}
@@ -300,10 +284,7 @@ export default function SentenceCompleteGame() {
             <View style={styles.scoreContainer}>
                <Animated.Text
                   entering={FadeInDown}
-                  style={[
-                     styles.scoreIncrement,
-                     { opacity: (scoreIncrement > 0 && showResult) ? 1 : 0 }
-                  ]}
+                  style={[styles.scoreIncrement, { opacity: scoreIncrement > 0 && showResult ? 1 : 0 }]}
                >
                   {scoreIncrement > 0 ? `+${scoreIncrement}` : "+0"}
                </Animated.Text>
@@ -313,15 +294,9 @@ export default function SentenceCompleteGame() {
 
          {/* Question Card */}
          <View style={styles.cardContainer}>
-            <Animated.View
-               key={currentQuestionIndex}
-               entering={FadeIn}
-               style={styles.card}
-            >
+            <Animated.View key={currentQuestionIndex} entering={FadeIn} style={styles.card}>
                {/* Sentence */}
-               <View style={styles.sentenceArea}>
-                  {renderCleanSentence()}
-               </View>
+               <View style={styles.sentenceArea}>{renderCleanSentence()}</View>
 
                {/* Options Grid */}
                <View style={styles.optionsGrid}>
@@ -365,7 +340,7 @@ const styles = StyleSheet.create({
       backgroundColor: DESIGN_COLORS.background,
    },
    tapHint: {
-      textAlign: 'center',
+      textAlign: "center",
       color: DESIGN_COLORS.textMuted,
       fontSize: 14,
       marginBottom: 8,
@@ -380,20 +355,20 @@ const styles = StyleSheet.create({
    },
    levelText: {
       fontSize: 18,
-      fontWeight: '500',
+      fontWeight: "500",
       color: DESIGN_COLORS.text,
    },
    scoreContainer: {
-      alignItems: 'flex-end',
+      alignItems: "flex-end",
    },
    scoreText: {
       fontSize: 18,
-      fontWeight: '500',
+      fontWeight: "500",
       color: DESIGN_COLORS.text,
    },
    scoreIncrement: {
       fontSize: 16,
-      fontWeight: 'bold',
+      fontWeight: "bold",
       color: DESIGN_COLORS.correct,
       marginBottom: 2,
    },
@@ -402,14 +377,14 @@ const styles = StyleSheet.create({
    cardContainer: {
       paddingHorizontal: 16,
       flex: 1, // Take available space
-      justifyContent: 'flex-start',
+      justifyContent: "flex-start",
    },
    card: {
       backgroundColor: DESIGN_COLORS.card,
       borderRadius: 24,
       padding: 24,
       paddingBottom: 40,
-      alignItems: 'center',
+      alignItems: "center",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.05,
@@ -421,43 +396,43 @@ const styles = StyleSheet.create({
    sentenceArea: {
       marginBottom: 50,
       marginTop: 30,
-      width: '100%',
-      alignItems: 'center',
+      width: "100%",
+      alignItems: "center",
       paddingHorizontal: 8,
    },
    sentenceText: {
       fontSize: 26,
-      fontWeight: '400',
+      fontWeight: "400",
       color: DESIGN_COLORS.text,
       lineHeight: 40,
-      textAlign: 'center',
+      textAlign: "center",
    },
    crossText: {
       fontSize: 26,
-      fontWeight: 'bold',
+      fontWeight: "bold",
       color: DESIGN_COLORS.wrong,
    },
 
    // Options
    optionsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: "row",
+      flexWrap: "wrap",
       gap: 16,
-      justifyContent: 'center',
-      width: '100%',
+      justifyContent: "center",
+      width: "100%",
    },
    optionWrapper: {
-      width: '45%', 
+      width: "45%",
    },
    optionButton: {
       backgroundColor: DESIGN_COLORS.optionDefault,
       borderRadius: 12,
       paddingVertical: 12,
       paddingHorizontal: 8,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       borderWidth: 1,
-      borderColor: '#D1D5DB',
+      borderColor: "#D1D5DB",
       minHeight: 60,
    },
    optionButtonCorrect: {
@@ -475,31 +450,31 @@ const styles = StyleSheet.create({
    },
    optionText: {
       fontSize: 24,
-      fontWeight: '400',
+      fontWeight: "400",
       color: DESIGN_COLORS.optionText,
    },
    optionTextLight: {
-      color: '#FFFFFF',
+      color: "#FFFFFF",
    },
    optionTextCorrect: {
       color: DESIGN_COLORS.correct,
-      fontWeight: 'bold',
+      fontWeight: "bold",
    },
 
    // Game Over
    gameOverContainer: {
       flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
    },
    gameOverTitle: {
       fontSize: 28,
-      fontWeight: 'bold',
+      fontWeight: "bold",
       marginBottom: 10,
    },
    finalScore: {
       fontSize: 48,
-      fontWeight: 'bold',
+      fontWeight: "bold",
       color: DESIGN_COLORS.correct,
       marginBottom: 40,
    },
@@ -511,9 +486,9 @@ const styles = StyleSheet.create({
       marginBottom: 16,
    },
    retryButtonText: {
-      color: '#FFF',
+      color: "#FFF",
       fontSize: 18,
-      fontWeight: 'bold',
+      fontWeight: "bold",
    },
    homeButton: {
       paddingHorizontal: 40,

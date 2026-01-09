@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import React, { useEffect } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import Animated, {
+  interpolate,
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
@@ -32,21 +33,24 @@ export const Cell = ({
 }: CellProps) => {
   const scale = useSharedValue(1);
   const colorProgress = useSharedValue(0); // 0=inactive, 1=active/blink, 2=selected, 3=success, 4=error
+  const pressedProgress = useSharedValue(0); // 0=not pressed, 1=pressed
 
   // Unified Effect for Visual State
   useEffect(() => {
     // Priority: Validation > Selection > Blinking > Idle
     if (isCorrect === true) {
       colorProgress.value = withTiming(3);
+      pressedProgress.value = withTiming(1, { duration: 100 });
       scale.value = withSequence(
-        withTiming(1.1, { duration: 100 }),
+        withTiming(1.02, { duration: 100 }),
         withTiming(1, { duration: 100 })
       );
     } else if (isCorrect === false) {
       colorProgress.value = withTiming(4);
+      pressedProgress.value = withTiming(1, { duration: 100 });
       scale.value = withSequence(
-        withTiming(0.9, { duration: 50 }),
-        withTiming(1.1, { duration: 50 }),
+        withTiming(0.95, { duration: 50 }),
+        withTiming(1.02, { duration: 50 }),
         withTiming(1, { duration: 50 })
       );
     } else if (isSelected) {
@@ -61,6 +65,7 @@ export const Cell = ({
     } else {
       // Reset to idle
       colorProgress.value = withTiming(0, { duration: 300 });
+      pressedProgress.value = withTiming(0, { duration: 200 });
       scale.value = withSpring(1);
     }
   }, [isBlinking, isSelected, isCorrect]);
@@ -70,18 +75,21 @@ export const Cell = ({
     const backgroundColor = interpolateColor(
       colorProgress.value,
       [0, 1, 2, 3, 4],
-      ["#a3a3a3", "#0e7490", "#0369a1", "#15803d", "#b91c1c"] // Darker shades for shadow
+      ["#a3a3a3", "#16a34a", "#16a34a", "#15803d", "#b91c1c"] // Darker shades for shadow (green accent)
     );
-    return { backgroundColor };
+    const opacity = interpolate(pressedProgress.value, [0, 1], [1, 0]);
+    return { backgroundColor, opacity };
   });
 
   const rFaceStyle = useAnimatedStyle(() => {
     const backgroundColor = interpolateColor(
       colorProgress.value,
       [0, 1, 2, 3, 4],
-      [COLORS.inactive, COLORS.primary, "#38bdf8", COLORS.success, COLORS.error]
+      [COLORS.inactive, "#16a34a", "#16a34a", "#16a34a", COLORS.error]
     );
-    return { backgroundColor };
+    // Move face down when pressed (shadow hidden)
+    const top = interpolate(pressedProgress.value, [0, 1], [0, 6]);
+    return { backgroundColor, top };
   });
 
   const rContainerStyle = useAnimatedStyle(() => {

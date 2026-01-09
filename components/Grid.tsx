@@ -33,12 +33,16 @@ export const Grid = ({
   const totalCells = rows * cols;
 
   // Calculate cell size based on width and gap
-  // margin is 4px * 2 = 8px per cell
   const GAP = 8;
-  const cellSize = (width - cols * GAP) / cols;
 
-  // Calculate height to maintain square cells
-  const gridHeight = rows * cellSize + rows * GAP;
+  // Calculate cell size based on the larger dimension (rows or cols)
+  // This ensures cells remain square and fit within the available space
+  const maxDimension = Math.max(rows, cols);
+  const cellSize = Math.floor((width - (maxDimension + 1) * GAP) / maxDimension);
+
+  // Calculate actual grid dimensions based on square cells
+  const gridWidth = cols * cellSize + (cols + 1) * GAP;
+  const gridHeight = rows * cellSize + (rows + 1) * GAP;
 
   const renderCells = () => {
     const cells = [];
@@ -60,7 +64,7 @@ export const Grid = ({
           isCorrect={isCorrect}
           onPress={onCellPress}
           disabled={!isInteractionEnabled}
-        />
+        />,
       );
     }
     return cells;
@@ -71,10 +75,12 @@ export const Grid = ({
       style={[
         styles.grid,
         {
-          width: width,
+          width: gridWidth,
           height: gridHeight,
           flexWrap: "wrap",
           flexDirection: "row",
+          gap: GAP,
+          padding: GAP / 2,
         },
       ]}
     >

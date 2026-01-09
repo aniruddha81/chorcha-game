@@ -72,7 +72,7 @@ const LevelComplete = ({ level, levelScore, onContinue }: LevelCompleteProps) =>
             style={styles.levelCompleteOverlay}
         >
             <Animated.View
-                entering={ZoomInEasyDown.springify().damping(12)}
+                entering={ZoomInEasyDown.springify().damping(50).stiffness(500)}
                 style={styles.levelCompleteContent}
             >
                 {/* Star burst effect */}
@@ -144,7 +144,7 @@ const WrongAnswerModal = ({ word, selectedAnswer, onContinue }: WrongAnswerModal
             style={styles.modalOverlay}
         >
             <Animated.View
-                entering={SlideInDown.springify().damping(15)}
+                entering={SlideInDown.springify().damping(50).stiffness(500)}
                 style={styles.modalContent}
             >
                 {/* Header with X icon */}

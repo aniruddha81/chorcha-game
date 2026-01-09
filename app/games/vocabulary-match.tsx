@@ -1,3 +1,4 @@
+import { GameResult } from "@/components/GameResult";
 import { MascotFeedback, MascotMood } from "@/components/MascotFeedback";
 import { PieTimer } from "@/components/PieTimer";
 import { WORD_PAIRS } from "@/constants/wordPairs";
@@ -7,14 +8,7 @@ import { useRouter } from "expo-router";
 import * as Speech from "expo-speech";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
   FadeInUp,
   useAnimatedStyle,
@@ -38,21 +32,16 @@ export default function VocabularyMatchGame() {
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
   const [isActive, setIsActive] = useState(true);
   const [questionNumber, setQuestionNumber] = useState(0);
-  const [mascotMessage, setMascotMessage] = useState(
-    "Does the sound match the image?"
-  );
+  const [mascotMessage, setMascotMessage] = useState("Does the sound match the image?");
   const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
   const [hasPlayedAudio, setHasPlayedAudio] = useState(false);
   const [correctStreak, setCorrectStreak] = useState(0);
   const [wrongStreak, setWrongStreak] = useState(0);
 
-  const [selectedButton, setSelectedButton] = useState<"yes" | "no" | null>(
-    null
-  );
+  const [selectedButton, setSelectedButton] = useState<"yes" | "no" | null>(null);
   const [buttonColor, setButtonColor] = useState<string | null>(null);
-  const [selectedVoice, setSelectedVoice] = useState<string | undefined>(
-    undefined
-  );
+  const [selectedVoice, setSelectedVoice] = useState<string | undefined>(undefined);
+  const [showResult, setShowResult] = useState(false);
 
   // Current Round Data
   const [spokenWord, setSpokenWord] = useState("");
@@ -68,8 +57,7 @@ export default function VocabularyMatchGame() {
     setSelectedButton(null);
 
     // Pick random word pair
-    const randomPair =
-      WORD_PAIRS[Math.floor(Math.random() * WORD_PAIRS.length)];
+    const randomPair = WORD_PAIRS[Math.floor(Math.random() * WORD_PAIRS.length)];
 
     // 50% chance of match
     const shouldMatch = Math.random() > 0.5;
@@ -83,9 +71,7 @@ export default function VocabularyMatchGame() {
     } else {
       // Pick random similar word
       const similarWord =
-        randomPair.similarWords[
-          Math.floor(Math.random() * randomPair.similarWords.length)
-        ];
+        randomPair.similarWords[Math.floor(Math.random() * randomPair.similarWords.length)];
       setDisplayedWord(similarWord.word);
       setDisplayedEmoji(similarWord.emoji);
       setIsMatch(false);
@@ -103,13 +89,11 @@ export default function VocabularyMatchGame() {
       const enhanced = voices.find(
         (v) =>
           v.language?.toLowerCase().startsWith("en-us") &&
-          v.quality === Speech.VoiceQuality.Enhanced
+          v.quality === Speech.VoiceQuality.Enhanced,
       );
 
       // Fallback: any voice for that language
-      const fallback = voices.find((v) =>
-        v.language?.toLowerCase().startsWith("en-us")
-      );
+      const fallback = voices.find((v) => v.language?.toLowerCase().startsWith("en-us"));
 
       setSelectedVoice((enhanced ?? fallback)?.identifier);
     })();
@@ -120,16 +104,7 @@ export default function VocabularyMatchGame() {
   useEffect(() => {
     if (timeLeft <= 0) {
       setIsActive(false);
-      // Show game over alert
-      setTimeout(() => {
-        Alert.alert("Time's Up!", `Game Over! Your final score: ${score}`, [
-          {
-            text: "Play Again",
-            onPress: () => router.replace("/games/vocabulary-match"),
-          },
-          { text: "Home", onPress: () => router.back() },
-        ]);
-      }, 100);
+      setShowResult(true);
       return;
     }
     if (!isActive) return;
@@ -151,10 +126,7 @@ export default function VocabularyMatchGame() {
     if (!isActive) return;
 
     // Animate mic button
-    micScale.value = withSequence(
-      withSpring(1.2, { damping: 10 }),
-      withSpring(1)
-    );
+    micScale.value = withSequence(withSpring(1.2, { damping: 10 }), withSpring(1));
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
@@ -239,6 +211,34 @@ export default function VocabularyMatchGame() {
     };
   });
 
+  const handleRetry = () => {
+    setScore(0);
+    setTimeLeft(TIME_LIMIT);
+    setIsActive(true);
+    setShowResult(false);
+    setQuestionNumber(0);
+    setCorrectStreak(0);
+    setWrongStreak(0);
+    setMascotMessage("Does the sound match the image?");
+    setMascotMood("explain");
+    generateRound();
+  };
+
+  // Calculate score percentage (assuming max possible score based on time)
+  const maxPossibleScore = TIME_LIMIT * (BASE_SCORE / 2); // Rough estimate
+  const scorePercentage = Math.min(100, Math.round((score / maxPossibleScore) * 100));
+
+  if (showResult) {
+    return (
+      <GameResult
+        scorePercentage={scorePercentage}
+        onRetry={handleRetry}
+        onHome={() => router.back()}
+        mascotMessage={`Time's up! You scored ${score} points!`}
+      />
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar style="dark" />
@@ -252,10 +252,7 @@ export default function VocabularyMatchGame() {
             <Animated.Text
               key={`points-${score}-${lastAdded}`}
               entering={FadeInUp}
-              style={[
-                styles.pointsAdded,
-                { color: lastAdded > 0 ? "#50C878" : "#EF4444" },
-              ]}
+              style={[styles.pointsAdded, { color: lastAdded > 0 ? "#50C878" : "#EF4444" }]}
             >
               {lastAdded > 0 ? `+${lastAdded}` : lastAdded}
             </Animated.Text>
@@ -271,21 +268,13 @@ export default function VocabularyMatchGame() {
           <PieTimer remaining={timeLeft} total={TIME_LIMIT} />
         </View>
 
-        <Animated.View
-          key={`card-${score}-${displayedWord}`}
-          entering={ZoomIn}
-          style={styles.card}
-        >
+        <Animated.View key={`card-${score}-${displayedWord}`} entering={ZoomIn} style={styles.card}>
           {/* Emoji Display */}
           <Text style={styles.emoji}>{displayedEmoji}</Text>
 
           {/* Audio Button */}
           <Animated.View style={micAnimatedStyle}>
-            <TouchableOpacity
-              style={styles.micButton}
-              onPress={playAudio}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={styles.micButton} onPress={playAudio} activeOpacity={0.8}>
               <Image
                 source={require("../../assets/images/audio.png")}
                 alt="Audio"
@@ -302,9 +291,7 @@ export default function VocabularyMatchGame() {
           style={[
             styles.actionButton,
             styles.defaultButton,
-            selectedButton === "no" && buttonColor
-              ? { backgroundColor: buttonColor }
-              : null,
+            selectedButton === "no" && buttonColor ? { backgroundColor: buttonColor } : null,
           ]}
           onPress={() => handleGuess(false)}
           disabled={!hasPlayedAudio}
@@ -316,9 +303,7 @@ export default function VocabularyMatchGame() {
           style={[
             styles.actionButton,
             styles.defaultButton,
-            selectedButton === "yes" && buttonColor
-              ? { backgroundColor: buttonColor }
-              : null,
+            selectedButton === "yes" && buttonColor ? { backgroundColor: buttonColor } : null,
           ]}
           onPress={() => handleGuess(true)}
           disabled={!hasPlayedAudio}
@@ -410,7 +395,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: 25,
     gap: 20,
-    marginBottom: 20,
+    marginBottom: 180,
   },
   actionButton: {
     flex: 1,

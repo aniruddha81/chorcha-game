@@ -1,8 +1,8 @@
-import { MascotFeedback } from "@/components/MascotFeedback";
+import { GameResult } from "@/components/GameResult";
 import Background from "@/components/starfield-animation";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   Dimensions,
   Image,
   SafeAreaView,
@@ -50,6 +50,7 @@ const DATA: Question[] = [
 ];
 
 const TIMER_LIMIT = 30;
+const DRIFT_DURATION = 8000; // 8 seconds to reach bottom (was 30s — 4x faster)
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const ROCKET_SIZE = 120;
 
@@ -59,34 +60,71 @@ const ROCKET_MAX_Y = SCREEN_HEIGHT - 180; // adjust if needed
 const ROCKET_MIDDLE_Y = ROCKET_MAX_Y / 2;
 
 // Movement
-const CORRECT_ANSWER_BOOST = 50;
-const WRONG_ANSWER_PENALTY = 60;
+const CORRECT_ANSWER_BOOST = 140; // More dramatic forward dash
+const WRONG_ANSWER_PENALTY = 100; // More punishing backward penalty
+const BACKWARD_ANIM_DURATION = 120; // Snappier backward animation
+const FORWARD_ANIM_DURATION = 180; // Faster forward dash
 
 export default function RocketSynonymGame() {
+  const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lives, setLives] = useState(3);
   const [score, setScore] = useState(0);
   const [timer, setTimer] = useState(TIMER_LIMIT);
   const [wrongStreak, setWrongStreak] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+  const [showResult, setShowResult] = useState(false);
+  const [gameOverReason, setGameOverReason] = useState("");
   const [starSpeed, setStarSpeed] = useState(1);
-  const [showMascot, setShowMascot] = useState(false);
+  const [shuffledOptions, setShuffledOptions] = useState<[string, string]>([...DATA[0].options]);
 
   // Rocket vertical position
   const rocketY = useSharedValue(ROCKET_MIDDLE_Y);
+
+  // Shake animation for wrong answers
+  const shakeAnim = useSharedValue(0);
+  const wrongFlash = useSharedValue(0);
+
+  // Motion blur effect for forward dash
+  const motionBlur = useSharedValue(0);
+  const rocketStretch = useSharedValue(1);
 
   // Guard to prevent multiple loseLife calls (bottom hit / timeout overlap)
   const lifeLock = useSharedValue(false);
 
   const animatedRocketStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: rocketY.value }],
+    transform: [
+      { translateY: rocketY.value },
+      { translateX: shakeAnim.value },
+      { scaleY: rocketStretch.value },
+    ],
+    opacity: 1 - motionBlur.value * 0.3, // Slight fade during dash
   }));
+
+  // Motion trail style for blur effect
+  const motionTrailStyle = useAnimatedStyle(() => ({
+    opacity: motionBlur.value,
+    transform: [
+      { translateY: rocketY.value + 40 },
+      { scaleY: 2 + motionBlur.value * 2 },
+      { scaleX: 0.8 },
+    ],
+  }));
+
+  const animatedFlashStyle = useAnimatedStyle(() => ({
+    opacity: wrongFlash.value,
+  }));
+
+  // Shuffle options randomly
+  const shuffleOptions = useCallback((options: [string, string]): [string, string] => {
+    return Math.random() > 0.5 ? options : [options[1], options[0]];
+  }, []);
 
   // Smooth drift (UI thread)
   const startDrift = useCallback(() => {
     cancelAnimation(rocketY);
     rocketY.value = withTiming(ROCKET_MAX_Y, {
-      duration: TIMER_LIMIT * 1000,
+      duration: DRIFT_DURATION,
       easing: Easing.linear,
     });
   }, [rocketY]);
@@ -94,8 +132,12 @@ export default function RocketSynonymGame() {
   // Next question
   const nextQuestion = useCallback(() => {
     setTimer(TIMER_LIMIT);
-    setCurrentIndex((prev) => (prev + 1) % DATA.length);
-  }, []);
+    setCurrentIndex((prev) => {
+      const nextIdx = (prev + 1) % DATA.length;
+      setShuffledOptions(shuffleOptions(DATA[nextIdx].options));
+      return nextIdx;
+    });
+  }, [shuffleOptions]);
 
   // Reset game
   const resetGame = useCallback(() => {
@@ -104,39 +146,79 @@ export default function RocketSynonymGame() {
     setTimer(TIMER_LIMIT);
     setWrongStreak(0);
     setGameOver(false);
+    setShowResult(false);
+    setGameOverReason("");
 
     lifeLock.value = false;
     rocketY.value = ROCKET_MIDDLE_Y;
+    shakeAnim.value = 0;
+    wrongFlash.value = 0;
+    motionBlur.value = 0;
+    rocketStretch.value = 1;
 
     setCurrentIndex(0);
+    setShuffledOptions(shuffleOptions(DATA[0].options));
     startDrift(); // important: currentIndex might remain 0, so restart drift here
-  }, [rocketY, startDrift, lifeLock]);
+  }, [
+    rocketY,
+    startDrift,
+    lifeLock,
+    shakeAnim,
+    wrongFlash,
+    motionBlur,
+    rocketStretch,
+    shuffleOptions,
+  ]);
 
   // End game
-  const endGame = useCallback(
-    (reason: string) => {
-      setGameOver(true);
-      Alert.alert("Game Over", `${reason}\nFinal Score: ${score}`, [
-        { text: "Try Again", onPress: resetGame },
-      ]);
-    },
-    [score, resetGame]
-  );
+  const endGame = useCallback((reason: string) => {
+    setGameOver(true);
+    setGameOverReason(reason);
+    setShowResult(true);
+  }, []);
 
   const animateRocketThenNext = useCallback(
-    (targetY: number) => {
+    (targetY: number, isForward: boolean = false) => {
       cancelAnimation(rocketY);
 
-      rocketY.value = withTiming(targetY, { duration: 250 }, (finished) => {
+      if (isForward) {
+        // Trigger motion blur and stretch for forward dash
+        motionBlur.value = withTiming(0.8, { duration: 50 }, () => {
+          motionBlur.value = withTiming(0, { duration: 150 });
+        });
+        rocketStretch.value = withTiming(1.3, { duration: 50 }, () => {
+          rocketStretch.value = withTiming(1, { duration: 150 });
+        });
+      }
+
+      const duration = isForward ? FORWARD_ANIM_DURATION : BACKWARD_ANIM_DURATION;
+
+      rocketY.value = withTiming(targetY, { duration }, (finished) => {
         if (finished) {
           runOnJS(nextQuestion)(); // ✅ go next only AFTER rocket anim finishes
         }
       });
     },
-    [rocketY, nextQuestion]
+    [rocketY, nextQuestion, motionBlur, rocketStretch],
   );
 
   const handleWrong = useCallback(() => {
+    // Trigger shake animation
+    shakeAnim.value = withTiming(-15, { duration: 50 }, () => {
+      shakeAnim.value = withTiming(15, { duration: 50 }, () => {
+        shakeAnim.value = withTiming(-10, { duration: 50 }, () => {
+          shakeAnim.value = withTiming(10, { duration: 50 }, () => {
+            shakeAnim.value = withTiming(0, { duration: 50 });
+          });
+        });
+      });
+    });
+
+    // Trigger red flash
+    wrongFlash.value = withTiming(0.4, { duration: 100 }, () => {
+      wrongFlash.value = withTiming(0, { duration: 300 });
+    });
+
     // Decrement life immediately on wrong answer
     let outOfLives = false;
     setLives((prev) => {
@@ -148,10 +230,7 @@ export default function RocketSynonymGame() {
     const newStreak = wrongStreak + 1;
     setWrongStreak(newStreak);
 
-    const targetY = Math.min(
-      ROCKET_MAX_Y,
-      rocketY.value + WRONG_ANSWER_PENALTY
-    );
+    const targetY = Math.min(ROCKET_MAX_Y, rocketY.value + WRONG_ANSWER_PENALTY);
 
     // Prevent bottom-hit detection from double-decrementing life
     lifeLock.value = true;
@@ -164,15 +243,15 @@ export default function RocketSynonymGame() {
     // If 3 wrong in a row -> show the fall first, then end game
     if (newStreak >= 3) {
       cancelAnimation(rocketY);
-      rocketY.value = withTiming(targetY, { duration: 250 }, (finished) => {
+      rocketY.value = withTiming(targetY, { duration: BACKWARD_ANIM_DURATION }, (finished) => {
         if (finished) runOnJS(endGame)("3 wrong answers in a row!");
       });
       return;
     }
 
-    // Otherwise animate down, then next question
-    animateRocketThenNext(targetY);
-  }, [wrongStreak, rocketY, endGame, animateRocketThenNext, lifeLock]);
+    // Otherwise animate down (fast), then next question
+    animateRocketThenNext(targetY, false);
+  }, [wrongStreak, rocketY, endGame, animateRocketThenNext, lifeLock, shakeAnim, wrongFlash]);
 
   const handleAnswer = (selected: string) => {
     if (gameOver) return;
@@ -181,13 +260,10 @@ export default function RocketSynonymGame() {
       setScore((s) => s + 20);
       setWrongStreak(0);
 
-      const targetY = Math.max(
-        ROCKET_TOP_Y,
-        rocketY.value - CORRECT_ANSWER_BOOST
-      );
+      const targetY = Math.max(ROCKET_TOP_Y, rocketY.value - CORRECT_ANSWER_BOOST);
 
-      // Animate boost first, then next question
-      animateRocketThenNext(targetY);
+      // Animate boost first with motion blur, then next question
+      animateRocketThenNext(targetY, true);
     } else {
       handleWrong();
     }
@@ -218,13 +294,13 @@ export default function RocketSynonymGame() {
 
   // Start drift when question changes (or game resumes)
   useEffect(() => {
-    if (gameOver || lives <= 0 || showMascot) return;
+    if (gameOver || lives <= 0) return;
 
     // release lock for next round
     lifeLock.value = false;
 
     startDrift();
-  }, [currentIndex, gameOver, lives, startDrift, lifeLock, showMascot]);
+  }, [currentIndex, gameOver, lives, startDrift, lifeLock]);
 
   // Detect bottom hit smoothly (UI thread → JS)
   useAnimatedReaction(
@@ -236,12 +312,12 @@ export default function RocketSynonymGame() {
         lifeLock.value = true;
         runOnJS(loseLife)();
       }
-    }
+    },
   );
 
   // Timer (JS) - timeout loses life
   useEffect(() => {
-    if (gameOver || lives <= 0 || showMascot) return;
+    if (gameOver || lives <= 0) return;
 
     const interval = setInterval(() => {
       setTimer((prev) => {
@@ -256,11 +332,27 @@ export default function RocketSynonymGame() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [gameOver, lives, loseLife, lifeLock, showMascot]);
+  }, [gameOver, lives, loseLife, lifeLock]);
 
+  // Initialize shuffled options on mount
   useEffect(() => {
-    setShowMascot(true);
-  }, []);
+    setShuffledOptions(shuffleOptions(DATA[0].options));
+  }, [shuffleOptions]);
+
+  // Calculate score percentage (based on max possible score)
+  const maxPossibleScore = DATA.length * 20; // 20 points per correct answer
+  const scorePercentage = Math.min(100, Math.round((score / maxPossibleScore) * 100));
+
+  if (showResult) {
+    return (
+      <GameResult
+        scorePercentage={scorePercentage}
+        onRetry={resetGame}
+        onHome={() => router.back()}
+        mascotMessage={`${gameOverReason} You scored ${score} points!`}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -271,13 +363,21 @@ export default function RocketSynonymGame() {
       <View style={styles.gameArea}>
         <View style={styles.dangerZone} />
 
-        <Animated.View style={[styles.rocketContainer, animatedRocketStyle]}>
+        {/* Motion trail for dash effect */}
+        <Animated.View style={[styles.motionTrail, motionTrailStyle]} pointerEvents="none">
           <Image
             source={require("../../assets/images/rocket.png")}
-            style={styles.rocketEmoji}
+            style={[styles.rocketEmoji, styles.trailImage]}
           />
         </Animated.View>
+
+        <Animated.View style={[styles.rocketContainer, animatedRocketStyle]}>
+          <Image source={require("../../assets/images/rocket.png")} style={styles.rocketEmoji} />
+        </Animated.View>
       </View>
+
+      {/* Wrong answer flash overlay */}
+      <Animated.View style={[styles.wrongFlashOverlay, animatedFlashStyle]} pointerEvents="none" />
 
       {/* overlay */}
       <View style={styles.overlay} pointerEvents="box-none">
@@ -302,7 +402,7 @@ export default function RocketSynonymGame() {
           <Text style={styles.targetWord}>{DATA[currentIndex].word}</Text>
 
           <View style={styles.optionsContainer}>
-            {DATA[currentIndex].options.map((option) => (
+            {shuffledOptions.map((option) => (
               <TouchableOpacity
                 key={option}
                 style={styles.optionBtn}
@@ -314,14 +414,6 @@ export default function RocketSynonymGame() {
             ))}
           </View>
 
-          {showMascot === true ? (
-            <MascotFeedback
-              text={`select the correct synonym of the highlighted word`}
-              showBg={false}
-              onClose={() => setShowMascot(false)}
-            />
-          ) : null}
-
           {/* If you want to show timer text */}
           <Text style={styles.timerTextOverlay}>⏱ {timer}s</Text>
         </View>
@@ -332,6 +424,12 @@ export default function RocketSynonymGame() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
+
+  wrongFlashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#ff0000",
+    zIndex: 100,
+  },
 
   gameArea: {
     ...StyleSheet.absoluteFillObject,
@@ -380,6 +478,15 @@ const styles = StyleSheet.create({
 
   rocketContainer: { alignItems: "center" },
   rocketEmoji: { width: ROCKET_SIZE, height: ROCKET_SIZE },
+
+  motionTrail: {
+    position: "absolute",
+    alignItems: "center",
+  },
+  trailImage: {
+    tintColor: "#00ffff",
+    opacity: 0.5,
+  },
 
   quizCard: {
     position: "absolute",

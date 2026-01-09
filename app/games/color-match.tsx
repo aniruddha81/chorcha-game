@@ -1,3 +1,4 @@
+import { GameResult } from "@/components/GameResult";
 import { MascotFeedback, MascotMood } from "@/components/MascotFeedback";
 import { PieTimer } from "@/components/PieTimer";
 import { getFeedbackMessage } from "@/utils/feedbackMessages";
@@ -5,7 +6,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInUp, ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 const TIME_LIMIT = 60;
@@ -36,7 +37,7 @@ export default function ColorMatchGame() {
   const [isActive, setIsActive] = useState(true);
   const [questionNumber, setQuestionNumber] = useState(0);
   const [mascotMessage, setMascotMessage] = useState(
-    "Does the word of left side match the color of right side?"
+    "Does the word of left side match the color of right side?",
   );
   const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
   const [correctStreak, setCorrectStreak] = useState(0);
@@ -45,24 +46,14 @@ export default function ColorMatchGame() {
   const [leftCard, setLeftCard] = useState({ text: "", color: "#000" });
   const [rightCard, setRightCard] = useState({ text: "", color: "" });
 
-  const [selectedButton, setSelectedButton] = useState<"yes" | "no" | null>(
-    null
-  );
+  const [selectedButton, setSelectedButton] = useState<"yes" | "no" | null>(null);
   const [buttonColor, setButtonColor] = useState<string | null>(null);
+  const [showResult, setShowResult] = useState(false);
 
   useEffect(() => {
     if (timeLeft <= 0) {
       setIsActive(false);
-      // Show game over alert
-      setTimeout(() => {
-        Alert.alert("Time's Up!", `Game Over! Your final score: ${score}`, [
-          {
-            text: "Play Again",
-            onPress: () => router.replace("/games/color-match"),
-          },
-          { text: "Home", onPress: () => router.back() },
-        ]);
-      }, 100);
+      setShowResult(true);
       return;
     }
     if (!isActive) return;
@@ -160,6 +151,34 @@ export default function ColorMatchGame() {
     }, delay);
   };
 
+  const handleRetry = () => {
+    setScore(0);
+    setTimeLeft(TIME_LIMIT);
+    setIsActive(true);
+    setShowResult(false);
+    setQuestionNumber(0);
+    setCorrectStreak(0);
+    setWrongStreak(0);
+    setMascotMessage("Does the word of left side match the color of right side?");
+    setMascotMood("explain");
+    generateRound();
+  };
+
+  // Calculate score percentage (assuming max possible score based on time)
+  const maxPossibleScore = TIME_LIMIT * (BASE_SCORE / 2); // Rough estimate
+  const scorePercentage = Math.min(100, Math.round((score / maxPossibleScore) * 100));
+
+  if (showResult) {
+    return (
+      <GameResult
+        scorePercentage={scorePercentage}
+        onRetry={handleRetry}
+        onHome={() => router.back()}
+        mascotMessage={`You scored ${score} points!`}
+      />
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar style="dark" />
@@ -191,24 +210,12 @@ export default function ColorMatchGame() {
         </View>
 
         <View style={styles.cardsRow}>
-          <Animated.View
-            key={`l-${leftCard.text}-${score}`}
-            entering={ZoomIn}
-            style={styles.card}
-          >
-            <Text style={[styles.mainText, { color: leftCard.color }]}>
-              {leftCard.text}
-            </Text>
+          <Animated.View key={`l-${leftCard.text}-${score}`} entering={ZoomIn} style={styles.card}>
+            <Text style={[styles.mainText, { color: leftCard.color }]}>{leftCard.text}</Text>
           </Animated.View>
 
-          <Animated.View
-            key={`r-${rightCard.text}-${score}`}
-            entering={ZoomIn}
-            style={styles.card}
-          >
-            <Text style={[styles.mainText, { color: rightCard.color }]}>
-              {rightCard.text}
-            </Text>
+          <Animated.View key={`r-${rightCard.text}-${score}`} entering={ZoomIn} style={styles.card}>
+            <Text style={[styles.mainText, { color: rightCard.color }]}>{rightCard.text}</Text>
           </Animated.View>
         </View>
       </View>
@@ -218,9 +225,7 @@ export default function ColorMatchGame() {
           style={[
             styles.actionButton,
             styles.noButton,
-            selectedButton === "no" && buttonColor
-              ? { backgroundColor: buttonColor }
-              : null,
+            selectedButton === "no" && buttonColor ? { backgroundColor: buttonColor } : null,
           ]}
           onPress={() => handleGuess(false)}
         >
@@ -231,9 +236,7 @@ export default function ColorMatchGame() {
           style={[
             styles.actionButton,
             styles.yesButton,
-            selectedButton === "yes" && buttonColor
-              ? { backgroundColor: buttonColor }
-              : null,
+            selectedButton === "yes" && buttonColor ? { backgroundColor: buttonColor } : null,
           ]}
           onPress={() => handleGuess(true)}
         >
@@ -319,14 +322,14 @@ const styles = StyleSheet.create({
     borderColor: "#F0F0F0",
   },
   mainText: {
-    fontSize: 42, // Adjusted slightly for better fit
+    fontSize: 28,
     fontWeight: "500",
   },
   controls: {
     flexDirection: "row",
     paddingHorizontal: 25,
     gap: 20,
-    marginBottom: 20,
+    marginBottom: 180,
   },
   actionButton: {
     flex: 1,

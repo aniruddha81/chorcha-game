@@ -1,12 +1,12 @@
+import { GameResult } from "@/components/GameResult";
 import { Grid } from "@/components/Grid";
 import { MascotFeedback, MascotMood } from "@/components/MascotFeedback";
-import { COLORS, LEVELS } from "@/constants/gameConfig";
+import { COLORS, LEVELS, MAX_GRID_SIZE } from "@/constants/gameConfig";
 import { getFeedbackMessage } from "@/utils/feedbackMessages";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Game States
@@ -19,7 +19,6 @@ type GameStatus =
   | "LEVEL_COMPLETE";
 
 export default function GameScreen() {
-  const router = useRouter();
   const screenWidth = Dimensions.get("window").width;
 
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
@@ -28,23 +27,53 @@ export default function GameScreen() {
   const [status, setStatus] = useState<GameStatus>("IDLE");
   const [mascotMessage, setMascotMessage] = useState("");
   const [mascotMood, setMascotMood] = useState<MascotMood>("explain");
+  const [showResult, setShowResult] = useState(false);
+  const [isVictory, setIsVictory] = useState(false);
   const [correctStreak, setCorrectStreak] = useState(0);
   const [wrongStreak, setWrongStreak] = useState(0);
 
   const [pattern, setPattern] = useState<number[]>([]);
   const [userSelection, setUserSelection] = useState<number[]>([]);
-  const [validatedCells, setValidatedCells] = useState<
-    { id: number; correct: boolean }[]
-  >([]);
+  const [validatedCells, setValidatedCells] = useState<{ id: number; correct: boolean }[]>([]);
 
-  const currentLevelConfig = LEVELS[currentLevelIndex];
+  const currentLevelConfig = LEVELS[Math.min(currentLevelIndex, LEVELS.length - 1)];
+
+  // Calculate max possible score (sum of level * 100 for all levels completed)
+  const calculateMaxScore = (levelIndex: number) => {
+    let max = 0;
+    for (let i = 0; i <= levelIndex; i++) {
+      max += LEVELS[i].level * 100;
+    }
+    return max;
+  };
+
+  // Calculate score percentage
+  const getScorePercentage = () => {
+    const maxScore = calculateMaxScore(currentLevelIndex);
+    if (maxScore === 0) return 0;
+    return Math.round((score / maxScore) * 100);
+  };
+
+  // Reset game state
+  const resetGame = () => {
+    setLives(3);
+    setScore(0);
+    setCurrentLevelIndex(0);
+    setValidatedCells([]);
+    setUserSelection([]);
+    setPattern([]);
+    setMascotMessage("");
+    setShowResult(false);
+    setIsVictory(false);
+    setStatus("IDLE");
+  };
 
   // Start Level
   const startLevel = useCallback(() => {
     setStatus("SHOWING_PATTERN");
     // Only show tutorial message on first level
     if (currentLevelIndex === 0) {
-      setMascotMessage("Remember the blue tiles");
+      setMascotMessage("Remember the green tiles");
     } else {
       setMascotMessage("");
     }
@@ -72,7 +101,7 @@ export default function GameScreen() {
         setMascotMessage("");
       }
     }, currentLevelConfig.showDuration);
-  }, [currentLevelConfig]);
+  }, [currentLevelConfig, currentLevelIndex]);
 
   // Initial Start
   useEffect(() => {
@@ -85,128 +114,93 @@ export default function GameScreen() {
   const handleCellPress = (id: number) => {
     if (status !== "WAITING_INPUT") return;
 
-    // Toggle selection
-    if (userSelection.includes(id)) {
-      setUserSelection((prev) => prev.filter((item) => item !== id));
-    } else {
-      if (userSelection.length < currentLevelConfig.activeCells) {
-        const newSelection = [...userSelection, id];
-        setUserSelection(newSelection);
+    // Prevent pressing already validated cells
+    if (validatedCells.some((v) => v.id === id)) return;
 
-        // Auto-submit when user completes selection
-        if (newSelection.length === currentLevelConfig.activeCells) {
-          setTimeout(() => validateGuess(newSelection), 300);
-        }
-      }
-    }
-  };
+    const isCorrect = pattern.includes(id);
 
-  const validateGuess = (selection: number[]) => {
-    if (selection.length === 0) return;
-
-    setStatus("VALIDATING");
-
-    // Validate
-    const correctGuesses = selection.filter((id) => pattern.includes(id));
-    const wrongGuesses = selection.filter((id) => !pattern.includes(id));
-    const missedCells = pattern.filter((id) => !selection.includes(id));
-
-    const validationResults = [
-      ...correctGuesses.map((id) => ({ id, correct: true })),
-      ...wrongGuesses.map((id) => ({ id, correct: false })),
-      // Show missed cells as correct (they were part of the pattern)
-      ...missedCells.map((id) => ({ id, correct: true })),
-    ];
-
-    setValidatedCells(validationResults);
-
-    const isPerfect =
-      correctGuesses.length === pattern.length && wrongGuesses.length === 0;
-
-    if (isPerfect) {
-      // Success - Add points only if all correct
+    if (isCorrect) {
+      // Mark as correct immediately
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setScore((s) => s + currentLevelConfig.level * 100);
-      setMascotMood("happy");
+      const newValidated = [...validatedCells, { id, correct: true }];
+      setValidatedCells(newValidated);
 
-      // Update streaks
-      setCorrectStreak((prev) => prev + 1);
-      setWrongStreak(0);
+      // Check if all pattern cells have been found
+      const correctCount = newValidated.filter((v) => v.correct).length;
+      if (correctCount === pattern.length) {
+        // Level Complete!
+        setScore((s) => s + currentLevelConfig.level * 100);
+        setMascotMood("happy");
+        setCorrectStreak((prev) => prev + 1);
+        setWrongStreak(0);
 
-      // Calculate typing duration for success feedback
-      const feedbackMsg =
-        currentLevelIndex > 0
-          ? getFeedbackMessage(true, correctStreak + 1)
-          : "";
-      if (feedbackMsg) setMascotMessage(feedbackMsg);
-      const typingDuration = feedbackMsg.length * 40;
-      const delay = Math.max(1000, typingDuration + 300);
+        const feedbackMsg = currentLevelIndex > 0 ? getFeedbackMessage(true, correctStreak + 1) : "";
+        if (feedbackMsg) setMascotMessage(feedbackMsg);
 
-      setTimeout(() => {
-        if (currentLevelIndex + 1 < LEVELS.length) {
-          // Reset grid state immediately before level transition
-          setValidatedCells([]);
-          setUserSelection([]);
-          setPattern([]);
+        const typingDuration = feedbackMsg.length * 40;
+        const delay = Math.max(800, typingDuration + 300);
 
-          setStatus("LEVEL_COMPLETE");
-          setCurrentLevelIndex((prev) => prev + 1);
-          setStatus("IDLE"); // This triggers the useEffect to start next level
-        } else {
-          Alert.alert("Victory!", "You completed all levels!", [
-            { text: "Home", onPress: () => router.back() },
-          ]);
-        }
-      }, delay);
+        setStatus("VALIDATING");
+
+        setTimeout(() => {
+          if (currentLevelIndex + 1 < LEVELS.length) {
+            setValidatedCells([]);
+            setUserSelection([]);
+            setPattern([]);
+            setCurrentLevelIndex((prev) => prev + 1);
+            setStatus("IDLE");
+          } else {
+            setIsVictory(true);
+            setShowResult(true);
+          }
+        }, delay);
+      }
     } else {
-      // Failure - Show correct answer but no points added
+      // Wrong answer - mark as incorrect, show feedback, then restart level
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setValidatedCells((prev) => [...prev, { id, correct: false }]);
       setLives((l) => l - 1);
       setMascotMood("angry");
-
-      // Update streaks
       setWrongStreak((prev) => prev + 1);
       setCorrectStreak(0);
 
-      // Calculate typing duration for failure feedback
-      const feedbackMsg =
-        currentLevelIndex > 0 ? getFeedbackMessage(false, wrongStreak + 1) : "";
-      if (feedbackMsg) setMascotMessage(feedbackMsg);
-      const typingDuration = feedbackMsg.length * 40;
-      const delay = Math.max(2000, typingDuration + 500);
+      setStatus("VALIDATING");
 
-      // Show the correct pattern and mascot feedback then proceed
+      const feedbackMsg = currentLevelIndex > 0 ? getFeedbackMessage(false, wrongStreak + 1) : "";
+      if (feedbackMsg) setMascotMessage(feedbackMsg);
+
+      // Show the correct pattern after wrong answer
+      const missedCells = pattern.filter(
+        (pId) => !validatedCells.some((v) => v.id === pId)
+      );
+      setTimeout(() => {
+        setValidatedCells((prev) => [
+          ...prev,
+          ...missedCells.map((pId) => ({ id: pId, correct: true })),
+        ]);
+      }, 300);
+
+      const typingDuration = feedbackMsg.length * 40;
+      const delay = Math.max(1500, typingDuration + 500);
+
       setTimeout(() => {
         if (lives - 1 <= 0) {
           setStatus("GAME_OVER");
-          Alert.alert("Game Over", `Score: ${score}`, [
-            {
-              text: "Try Again",
-              onPress: () => {
-                // Reset Game
-                setLives(3);
-                setScore(0);
-                setCurrentLevelIndex(0);
-                setValidatedCells([]);
-                setUserSelection([]);
-                setPattern([]);
-                setMascotMessage(""); // Clear message
-                setStatus("IDLE");
-              },
-            },
-            { text: "Home", onPress: () => router.back() },
-          ]);
+          setIsVictory(false);
+          setShowResult(true);
         } else {
-          // Retry same level with NEW pattern
+          // Retry same level with new pattern
           setValidatedCells([]);
           setUserSelection([]);
           setPattern([]);
-          setMascotMessage(""); // Clear message
+          setMascotMessage("");
           setStatus("IDLE");
         }
       }, delay);
     }
   };
+
+
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -216,9 +210,7 @@ export default function GameScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.levelText}>Level {currentLevelConfig.level}</Text>
-          <Text style={styles.subText}>
-            Memorize {currentLevelConfig.activeCells} blocks
-          </Text>
+          <Text style={styles.subText}>Memorize {currentLevelConfig.activeCells} blocks</Text>
         </View>
         <View style={styles.stats}>
           <Text style={styles.livesText}>Lives: {lives}</Text>
@@ -238,7 +230,7 @@ export default function GameScreen() {
             onCellPress={handleCellPress}
             isInteractionEnabled={status === "WAITING_INPUT"}
             isShowingPattern={status === "SHOWING_PATTERN"}
-            width={Math.min(screenWidth - 48, currentLevelConfig.gridSize + 48)}
+            width={Math.min(screenWidth - 48, MAX_GRID_SIZE)}
           />
         </View>
       </View>
@@ -247,6 +239,15 @@ export default function GameScreen() {
       <View style={styles.mascotContainer}>
         <MascotFeedback text={mascotMessage} mood={mascotMood} />
       </View>
+
+      {/* Game Result Overlay */}
+      {showResult && (
+        <GameResult
+          scorePercentage={getScorePercentage()}
+          onRetry={resetGame}
+          averageScore={isVictory ? 50 : 70}
+        />
+      )}
     </SafeAreaView>
   );
 }

@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useState } from "react";
+import React, { Component, useEffect, useState } from "react";
 import {
     Dimensions,
     Image,
@@ -28,6 +28,7 @@ import Animated, {
     ZoomIn
 } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
+import Rive, { Fit } from "rive-react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -47,6 +48,46 @@ const COLORS = {
 
 const CIRCLE_SIZE = 160;
 const STROKE_WIDTH = 12;
+
+/* eslint-disable @typescript-eslint/no-require-imports */
+const RIVE_SOURCES = {
+    happy: require("../assets/mascot_happy.riv"),
+    angry: require("../assets/mascot_angry.riv"),
+};
+const FALLBACK_IMAGE = require("../assets/images/chorcha-mascot.png");
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+// Error boundary to catch Rive errors (e.g., in Expo Go where native modules aren't available)
+interface RiveErrorBoundaryProps {
+    children: React.ReactNode;
+    fallback: React.ReactNode;
+}
+
+interface RiveErrorBoundaryState {
+    hasError: boolean;
+}
+
+class RiveErrorBoundary extends Component<RiveErrorBoundaryProps, RiveErrorBoundaryState> {
+    constructor(props: RiveErrorBoundaryProps) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(): RiveErrorBoundaryState {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error: Error) {
+        console.warn("Rive failed to load, using fallback image:", error.message);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return this.props.fallback;
+        }
+        return this.props.children;
+    }
+}
 
 interface GameResultProps {
     scorePercentage: number;
@@ -165,6 +206,32 @@ const ActionButton = ({ icon, onPress, delay }: any) => {
     )
 }
 
+// Mascot component with Rive animation
+const ResultMascot = ({ isHighScore }: { isHighScore: boolean }) => {
+    const riveSource = isHighScore ? RIVE_SOURCES.happy : RIVE_SOURCES.angry;
+    const moodKey = isHighScore ? "happy" : "angry";
+
+    const fallbackImage = (
+        <Image
+            source={FALLBACK_IMAGE}
+            style={styles.mascotImage}
+            resizeMode="contain"
+        />
+    );
+
+    return (
+        <RiveErrorBoundary fallback={fallbackImage}>
+            <Rive
+                key={moodKey}
+                source={riveSource}
+                fit={Fit.Contain}
+                autoplay={true}
+                style={styles.mascotImage}
+            />
+        </RiveErrorBoundary>
+    );
+};
+
 export const GameResult = ({ scorePercentage, onRetry, onHome = () => { }, onExit, averageScore = 50 }: GameResultProps) => {
     const router = useRouter();
     const isHighScale = scorePercentage >= averageScore;
@@ -212,11 +279,7 @@ export const GameResult = ({ scorePercentage, onRetry, onHome = () => { }, onExi
                     entering={FadeInUp.delay(900).springify()}
                     style={styles.mascotContainer}
                 >
-                    <Image
-                        source={require("../assets/images/chorcha-mascot.png")}
-                        style={styles.mascotImage}
-                        resizeMode="contain"
-                    />
+                    <ResultMascot isHighScore={isHighScale} />
                     <View style={[styles.bubble, isHighScale ? styles.bubbleHappy : styles.bubbleSad]}>
                         <Text style={styles.bubbleText}>
                             {isHighScale ? "Wow!" : "Oops!"}
