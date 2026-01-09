@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Component, useEffect, useMemo, useState } from "react";
 import {
   Dimensions,
   Image,
@@ -9,21 +9,73 @@ import {
 } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 import Svg, { Ellipse } from "react-native-svg";
+import Rive, { Fit } from "rive-react-native";
+
+export type MascotMood = "explain" | "angry" | "happy";
 
 interface MascotFeedbackProps {
   text: string;
+  mood?: MascotMood;
   showBg?: boolean;
   onClose?: () => void;
 }
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+const RIVE_SOURCES: Record<MascotMood, number> = {
+  explain: require("../assets/mascot_explain.riv"),
+  angry: require("../assets/mascot_angry.riv"),
+  happy: require("../assets/mascot_happy.riv"),
+};
+
+const FALLBACK_IMAGE = require("../assets/images/chorcha-mascot.png");
+/* eslint-enable @typescript-eslint/no-require-imports */
+
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Error boundary to catch Rive errors (e.g., in Expo Go where native modules aren't available)
+interface RiveErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback: React.ReactNode;
+}
+
+interface RiveErrorBoundaryState {
+  hasError: boolean;
+}
+
+class RiveErrorBoundary extends Component<
+  RiveErrorBoundaryProps,
+  RiveErrorBoundaryState
+> {
+  constructor(props: RiveErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): RiveErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn("Rive failed to load, using fallback image:", error.message);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 export const MascotFeedback = ({
   text,
+  mood = "explain",
   showBg = true,
   onClose = () => {},
 }: MascotFeedbackProps) => {
   const [displayedText, setDisplayedText] = useState("");
+
+  const riveSource = useMemo(() => RIVE_SOURCES[mood], [mood]);
 
   useEffect(() => {
     setDisplayedText("");
@@ -45,6 +97,14 @@ export const MascotFeedback = ({
     return () => clearInterval(interval);
   }, [text]);
 
+  const fallbackImage = (
+    <Image
+      source={FALLBACK_IMAGE}
+      style={styles.mascotImage}
+      resizeMode="contain"
+    />
+  );
+
   return (
     <Pressable style={styles.container} onPress={onClose}>
       {/* Background SVG - Positioned Absolutely */}
@@ -57,13 +117,17 @@ export const MascotFeedback = ({
       ) : null}
 
       <View style={styles.contentWrapper}>
-        {/* Mascot Image */}
+        {/* Mascot Rive Animation with Fallback */}
         <View style={styles.mascotContainer}>
-          <Image
-            source={require("../assets/images/chorcha-mascot.png")}
-            style={styles.mascotImage}
-            resizeMode="contain"
-          />
+          <RiveErrorBoundary fallback={fallbackImage}>
+            <Rive
+              key={mood}
+              source={riveSource}
+              fit={Fit.Contain}
+              autoplay={true}
+              style={styles.mascotImage}
+            />
+          </RiveErrorBoundary>
         </View>
 
         {/* Speech Bubble */}
