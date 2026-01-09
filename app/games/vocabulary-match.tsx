@@ -1,13 +1,20 @@
 import { MascotFeedback } from "@/components/MascotFeedback";
 import { PieTimer } from "@/components/PieTimer";
 import { WORD_PAIRS } from "@/constants/wordPairs";
-import { Ionicons } from "@expo/vector-icons";
+import { getFeedbackMessage } from "@/utils/feedbackMessages";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import * as Speech from "expo-speech";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Animated, {
   FadeInUp,
   useAnimatedStyle,
@@ -31,8 +38,20 @@ export default function VocabularyMatchGame() {
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
   const [isActive, setIsActive] = useState(true);
   const [questionNumber, setQuestionNumber] = useState(0);
-  const [mascotMessage, setMascotMessage] = useState("");
+  const [mascotMessage, setMascotMessage] = useState(
+    "Does the sound match the image?"
+  );
   const [hasPlayedAudio, setHasPlayedAudio] = useState(false);
+  const [correctStreak, setCorrectStreak] = useState(0);
+  const [wrongStreak, setWrongStreak] = useState(0);
+
+  const [selectedButton, setSelectedButton] = useState<"yes" | "no" | null>(
+    null
+  );
+  const [buttonColor, setButtonColor] = useState<string | null>(null);
+  const [selectedVoice, setSelectedVoice] = useState<string | undefined>(
+    undefined
+  );
 
   // Current Round Data
   const [spokenWord, setSpokenWord] = useState("");
@@ -44,6 +63,9 @@ export default function VocabularyMatchGame() {
   const micScale = useSharedValue(1);
 
   const generateRound = useCallback(() => {
+    setButtonColor(null);
+    setSelectedButton(null);
+
     // Pick random word pair
     const randomPair =
       WORD_PAIRS[Math.floor(Math.random() * WORD_PAIRS.length)];
@@ -72,6 +94,25 @@ export default function VocabularyMatchGame() {
   }, []);
 
   useEffect(() => {
+    // load voices
+    (async () => {
+      const voices = await Speech.getAvailableVoicesAsync();
+
+      // Prefer Enhanced voices for en-US
+      const enhanced = voices.find(
+        (v) =>
+          v.language?.toLowerCase().startsWith("en-us") &&
+          v.quality === Speech.VoiceQuality.Enhanced
+      );
+
+      // Fallback: any voice for that language
+      const fallback = voices.find((v) =>
+        v.language?.toLowerCase().startsWith("en-us")
+      );
+
+      setSelectedVoice((enhanced ?? fallback)?.identifier);
+    })();
+
     generateRound();
   }, []);
 
@@ -98,6 +139,13 @@ export default function VocabularyMatchGame() {
     return () => clearInterval(timer);
   }, [timeLeft, isActive, score, router]);
 
+  // Auto-play audio when a new word is generated
+  useEffect(() => {
+    if (spokenWord && isActive) {
+      playAudio();
+    }
+  }, [spokenWord, isActive]); // Trigger on spokenWord or isActive changes
+
   const playAudio = () => {
     if (!isActive) return;
 
@@ -107,33 +155,40 @@ export default function VocabularyMatchGame() {
       withSpring(1)
     );
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
+    // Stop previous audio to avoid overlap
+    Speech.stop();
     Speech.speak(spokenWord, {
       language: "en-US",
-      pitch: 1.0,
-      rate: 0.8,
+      voice: selectedVoice, // Can be undefined
+      pitch: 0.92,
+      rate: 0.85,
     });
 
     setHasPlayedAudio(true);
   };
 
   const handleGuess = (userSaysMatch: boolean) => {
-    if (!isActive || !hasPlayedAudio) return;
+    if (!isActive || !hasPlayedAudio || buttonColor !== null) return; // Prevent multiple clicks during feedback
 
     const isCorrect = userSaysMatch === isMatch;
 
+    // Set which button was pressed
+    setSelectedButton(userSaysMatch ? "yes" : "no");
+
     if (isCorrect) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
+      setButtonColor("#22c55e"); // Green for correct
       setScore((s) => s + BASE_SCORE);
       setLastAdded(BASE_SCORE);
 
-      // Update mascot message for first 2 questions
-      if (questionNumber < 2) {
-        setMascotMessage("Wow you got it fast!");
-      }
+      // Update streaks
+      setCorrectStreak((prev) => prev + 1);
+      setWrongStreak(0);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setButtonColor("#ef4444"); // Red for incorrect
 
       // Deduct 300 points only if current score is greater than 300
       if (score > PENALTY) {
@@ -143,14 +198,36 @@ export default function VocabularyMatchGame() {
         setLastAdded(0); // Show 0 if score is too low to deduct
       }
 
-      // Update mascot message for first 2 questions
-      if (questionNumber < 2) {
-        setMascotMessage("Oops! Listen carefully!");
-      }
+      // Update streaks
+      setWrongStreak((prev) => prev + 1);
+      setCorrectStreak(0);
     }
 
     setQuestionNumber((prev) => prev + 1);
-    generateRound();
+
+    // Calculate new streak value for feedback
+    const newStreakValue = isCorrect ? correctStreak + 1 : wrongStreak + 1;
+
+    // Show feedback message immediately
+    let feedbackMsg = getFeedbackMessage(isCorrect, newStreakValue);
+    if (!isCorrect) {
+      if (isMatch) {
+        feedbackMsg += `\nThe sound was "${spokenWord}" and the image showed ${displayedEmoji}.`;
+      } else {
+        feedbackMsg += `\nThe sound was "${spokenWord}", but the image showed ${displayedEmoji}.`;
+      }
+    }
+    setMascotMessage(feedbackMsg);
+
+    // Calculate typing duration (40ms per char) + small buffer
+    const typingDuration = feedbackMsg.length * 40;
+
+    // If correct, move fast (800ms), if wrong, wait for typing + buffer (min 2s)
+    const delay = isCorrect ? 800 : Math.max(2000, typingDuration + 500);
+
+    setTimeout(() => {
+      generateRound();
+    }, delay);
   };
 
   const micAnimatedStyle = useAnimatedStyle(() => {
@@ -203,7 +280,11 @@ export default function VocabularyMatchGame() {
               onPress={playAudio}
               activeOpacity={0.8}
             >
-              <Ionicons name="volume-high" size={32} color="#50C878" />
+              <Image
+                source={require("../../assets/images/audio.png")}
+                alt="Audio"
+                style={{ width: 56, height: 35 }}
+              />
             </TouchableOpacity>
           </Animated.View>
         </Animated.View>
@@ -212,7 +293,13 @@ export default function VocabularyMatchGame() {
       {/* Controls */}
       <View style={styles.controls}>
         <TouchableOpacity
-          style={[styles.actionButton, styles.noButton]}
+          style={[
+            styles.actionButton,
+            styles.defaultButton,
+            selectedButton === "no" && buttonColor
+              ? { backgroundColor: buttonColor }
+              : null,
+          ]}
           onPress={() => handleGuess(false)}
           disabled={!hasPlayedAudio}
         >
@@ -220,7 +307,13 @@ export default function VocabularyMatchGame() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, styles.yesButton]}
+          style={[
+            styles.actionButton,
+            styles.defaultButton,
+            selectedButton === "yes" && buttonColor
+              ? { backgroundColor: buttonColor }
+              : null,
+          ]}
           onPress={() => handleGuess(true)}
           disabled={!hasPlayedAudio}
         >
@@ -228,12 +321,10 @@ export default function VocabularyMatchGame() {
         </TouchableOpacity>
       </View>
 
-      {/* Mascot - Only show for first 2 questions */}
-      {questionNumber < 2 && (
-        <View style={styles.mascotSpace}>
-          <MascotFeedback text={mascotMessage} />
-        </View>
-      )}
+      {/* Mascot - Always visible */}
+      <View style={styles.mascotSpace}>
+        <MascotFeedback text={mascotMessage} />
+      </View>
     </View>
   );
 }
@@ -320,12 +411,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#D0D0D0",
   },
-  noButton: {
+  defaultButton: {
     backgroundColor: "#E0E0E0",
-  },
-  yesButton: {
-    backgroundColor: "#50C878",
-    borderColor: "#45AD68",
+    borderColor: "#D0D0D0",
   },
   buttonText: {
     fontSize: 32,
