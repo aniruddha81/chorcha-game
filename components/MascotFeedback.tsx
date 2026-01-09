@@ -1,16 +1,81 @@
-import React, { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, View, Dimensions } from "react-native";
+import React, { Component, useEffect, useMemo, useState } from "react";
+import {
+  Dimensions,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 import Svg, { Ellipse } from "react-native-svg";
+import Rive, { Fit } from "rive-react-native";
+
+export type MascotMood = "explain" | "angry" | "happy";
 
 interface MascotFeedbackProps {
   text: string;
+  mood?: MascotMood;
+  showBg?: boolean;
+  onClose?: () => void;
 }
+
+/* eslint-disable @typescript-eslint/no-require-imports */
+const RIVE_SOURCES: Record<MascotMood, number> = {
+  explain: require("../assets/mascot_explain.riv"),
+  angry: require("../assets/mascot_angry.riv"),
+  happy: require("../assets/mascot_happy.riv"),
+};
+
+const FALLBACK_IMAGE = require("../assets/images/chorcha-mascot.png");
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-export const MascotFeedback = ({ text }: MascotFeedbackProps) => {
+// Error boundary to catch Rive errors (e.g., in Expo Go where native modules aren't available)
+interface RiveErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback: React.ReactNode;
+}
+
+interface RiveErrorBoundaryState {
+  hasError: boolean;
+}
+
+class RiveErrorBoundary extends Component<
+  RiveErrorBoundaryProps,
+  RiveErrorBoundaryState
+> {
+  constructor(props: RiveErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): RiveErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn("Rive failed to load, using fallback image:", error.message);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+export const MascotFeedback = ({
+  text,
+  mood = "explain",
+  showBg = true,
+  onClose = () => { },
+}: MascotFeedbackProps) => {
   const [displayedText, setDisplayedText] = useState("");
+
+  const riveSource = useMemo(() => RIVE_SOURCES[mood], [mood]);
 
   useEffect(() => {
     setDisplayedText("");
@@ -32,23 +97,37 @@ export const MascotFeedback = ({ text }: MascotFeedbackProps) => {
     return () => clearInterval(interval);
   }, [text]);
 
+  const fallbackImage = (
+    <Image
+      source={FALLBACK_IMAGE}
+      style={styles.mascotImage}
+      resizeMode="contain"
+    />
+  );
+
   return (
-    <View style={styles.container}>
+    <Pressable style={styles.container} onPress={onClose}>
       {/* Background SVG - Positioned Absolutely */}
-      <View style={styles.svgBackground}>
-        <Svg width={SCREEN_WIDTH} height="123" viewBox="0 0 393 123">
-          <Ellipse cx="195" cy="77.5" rx="243" ry="77.5" fill="#D9D9D9" />
-        </Svg>
-      </View>
+      {showBg === true ? (
+        <View style={styles.svgBackground}>
+          <Svg width={SCREEN_WIDTH} height="123" viewBox="0 0 393 123">
+            <Ellipse cx="195" cy="77.5" rx="243" ry="77.5" fill="#D9D9D9" />
+          </Svg>
+        </View>
+      ) : null}
 
       <View style={styles.contentWrapper}>
-        {/* Mascot Image */}
+        {/* Mascot Rive Animation with Fallback */}
         <View style={styles.mascotContainer}>
-          <Image
-            source={require("../assets/images/chorcha-mascot.png")}
-            style={styles.mascotImage}
-            resizeMode="contain"
-          />
+          <RiveErrorBoundary fallback={fallbackImage}>
+            <Rive
+              key={mood}
+              source={riveSource}
+              fit={Fit.Contain}
+              autoplay={true}
+              style={styles.mascotImage}
+            />
+          </RiveErrorBoundary>
         </View>
 
         {/* Speech Bubble */}
@@ -66,16 +145,19 @@ export const MascotFeedback = ({ text }: MascotFeedbackProps) => {
           </Animated.View>
         ) : null}
       </View>
-    </View>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    height: 250, // Height to accommodate mascot + bubble
+    flex: 1,
+    maxHeight: 200,
+    minHeight: 140,
     justifyContent: "flex-end",
     alignItems: "center",
     width: "100%",
+    overflow: "hidden",
   },
   svgBackground: {
     position: "absolute",
@@ -92,8 +174,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   mascotContainer: {
-    width: 150,
-    height: 150,
+    width: 120,
+    height: 120,
   },
   mascotImage: {
     width: "100%",
@@ -101,16 +183,16 @@ const styles = StyleSheet.create({
   },
   bubbleContainer: {
     flex: 1,
-    marginBottom: 80, // Lifts bubble up
-    marginLeft: -10, // Overlaps mascot slightly like reference
+    marginBottom: 50,
+    marginLeft: -10,
     position: "relative",
   },
   bubble: {
     backgroundColor: "#18181b",
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    minHeight: 60,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    minHeight: 45,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -130,7 +212,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: "#ffffff",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "500",
     textAlign: "center",
   },

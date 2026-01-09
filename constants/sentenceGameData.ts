@@ -8,180 +8,86 @@ export interface SentenceQuestion {
 }
 
 export const SENTENCE_QUESTIONS: SentenceQuestion[] = [
-   // Grammar - Easy
+   // Vocabulary
    {
       id: 1,
-      sentence: "She ____ to the store yesterday.",
-      correctAnswer: "went",
-      options: ["went", "go", "goes", "going"],
-      category: "grammar",
-      difficulty: 1,
-   },
-   {
-      id: 2,
-      sentence: "The cat ____ on the windowsill.",
-      correctAnswer: "sat",
-      options: ["sitting", "sit", "sat", "sits"],
-      category: "grammar",
-      difficulty: 1,
-   },
-   {
-      id: 3,
-      sentence: "I have ____ finished my homework.",
-      correctAnswer: "already",
-      options: ["yet", "already", "still", "never"],
-      category: "grammar",
-      difficulty: 1,
-   },
-
-   // Vocabulary - Easy
-   {
-      id: 4,
-      sentence: "The sun rises in the ____.",
-      correctAnswer: "east",
-      options: ["west", "east", "north", "south"],
+      sentence: "The company decided to ____ the product launch until they fixed the software bugs.",
+      correctAnswer: "postpone",
+      options: ["cancel", "postpone", "refuse", "prevent"],
       category: "vocabulary",
-      difficulty: 1,
-   },
-   {
-      id: 5,
-      sentence: "A group of wolves is called a ____.",
-      correctAnswer: "pack",
-      options: ["herd", "flock", "pack", "swarm"],
-      category: "vocabulary",
-      difficulty: 1,
-   },
-
-   // Idioms - Medium
-   {
-      id: 6,
-      sentence: "It's raining cats and ____.",
-      correctAnswer: "dogs",
-      options: ["dogs", "birds", "fish", "mice"],
-      category: "idiom",
       difficulty: 2,
    },
    {
+      id: 2,
+      sentence: "I'm afraid I can't give you a ____ answer until I've consulted with my supervisor.",
+      correctAnswer: "definite",
+      options: ["definite", "loud", "bitter", "vast"],
+      category: "vocabulary",
+      difficulty: 2,
+   },
+   {
+      id: 3,
+      sentence: "To stay healthy, you should try to ____ a balance between work and exercise.",
+      correctAnswer: "strike",
+      options: ["do", "make", "strike", "take"],
+      category: "vocabulary",
+      difficulty: 2,
+   },
+   {
+      id: 4,
+      sentence: "The witness provided a ____ description of the suspect, helping the police make an arrest.",
+      correctAnswer: "vivid",
+      options: ["shallow", "vivid", "blunt", "mild"],
+      category: "vocabulary",
+      difficulty: 2,
+   },
+   {
+      id: 5,
+      sentence: "He has a very ____ schedule this week, so he might not be able to meet for lunch.",
+      correctAnswer: "tight",
+      options: ["heavy", "thick", "tight", "hard"],
+      category: "vocabulary",
+      difficulty: 2,
+   },
+
+   // Grammar
+   {
+      id: 6,
+      sentence: "If I ____ more time, I would have finished the report yesterday.",
+      correctAnswer: "had had",
+      options: ["have", "had", "had had", "would have"],
+      category: "grammar",
+      difficulty: 3,
+   },
+   {
       id: 7,
-      sentence: "Don't put all your eggs in one ____.",
-      correctAnswer: "basket",
-      options: ["box", "basket", "bag", "bowl"],
-      category: "idiom",
+      sentence: "Neither the manager nor the employees ____ aware of the schedule change.",
+      correctAnswer: "were",
+      options: ["was", "were", "is", "has been"],
+      category: "grammar",
       difficulty: 2,
    },
    {
       id: 8,
-      sentence: "A penny saved is a penny ____.",
-      correctAnswer: "earned",
-      options: ["lost", "earned", "spent", "found"],
-      category: "idiom",
+      sentence: "She is very good ____ explaining complex mathematical theories to beginners.",
+      correctAnswer: "at",
+      options: ["at", "in", "with", "about"],
+      category: "grammar",
       difficulty: 2,
    },
-
-   // Logic - Medium
    {
       id: 9,
-      sentence: "If today is Monday, tomorrow is ____.",
-      correctAnswer: "Tuesday",
-      options: ["Sunday", "Tuesday", "Wednesday", "Monday"],
-      category: "logic",
+      sentence: "By the time we arrived at the cinema, the movie ____ already started.",
+      correctAnswer: "had",
+      options: ["has", "was", "had", "would"],
+      category: "grammar",
       difficulty: 2,
    },
    {
       id: 10,
-      sentence: "Water freezes at ____ degrees Celsius.",
-      correctAnswer: "zero",
-      options: ["one", "zero", "ten", "hundred"],
-      category: "logic",
-      difficulty: 2,
-   },
-
-   // Grammar - Medium
-   {
-      id: 11,
-      sentence: "Neither the teacher ____ the students were present.",
-      correctAnswer: "nor",
-      options: ["or", "and", "nor", "but"],
-      category: "grammar",
-      difficulty: 2,
-   },
-   {
-      id: 12,
-      sentence: "The book, ____ I borrowed from the library, was fascinating.",
-      correctAnswer: "which",
-      options: ["who", "which", "what", "whose"],
-      category: "grammar",
-      difficulty: 2,
-   },
-
-   // Vocabulary - Hard
-   {
-      id: 13,
-      sentence: "The detective's ____ observation solved the case.",
-      correctAnswer: "astute",
-      options: ["dull", "astute", "careless", "random"],
-      category: "vocabulary",
-      difficulty: 3,
-   },
-   {
-      id: 14,
-      sentence: "Her ____ demeanor made everyone feel welcome.",
-      correctAnswer: "affable",
-      options: ["hostile", "affable", "indifferent", "anxious"],
-      category: "vocabulary",
-      difficulty: 3,
-   },
-
-   // Idioms - Hard
-   {
-      id: 15,
-      sentence: "The ball is in your ____.",
-      correctAnswer: "court",
-      options: ["court", "field", "hands", "zone"],
-      category: "idiom",
-      difficulty: 3,
-   },
-   {
-      id: 16,
-      sentence: "She let the cat out of the ____.",
-      correctAnswer: "bag",
-      options: ["house", "bag", "box", "room"],
-      category: "idiom",
-      difficulty: 3,
-   },
-
-   // Logic - Hard
-   {
-      id: 17,
-      sentence: "A triangle has ____ sides.",
-      correctAnswer: "three",
-      options: ["two", "three", "four", "five"],
-      category: "logic",
-      difficulty: 1,
-   },
-   {
-      id: 18,
-      sentence: "The opposite of 'ancient' is ____.",
-      correctAnswer: "modern",
-      options: ["old", "modern", "antique", "vintage"],
-      category: "vocabulary",
-      difficulty: 2,
-   },
-
-   // More Grammar
-   {
-      id: 19,
-      sentence: "If I ____ you, I would accept the offer.",
-      correctAnswer: "were",
-      options: ["am", "was", "were", "be"],
-      category: "grammar",
-      difficulty: 3,
-   },
-   {
-      id: 20,
-      sentence: "This box is ____ than that one.",
-      correctAnswer: "heavier",
-      options: ["heavy", "heavier", "heaviest", "heavily"],
+      sentence: "I look forward to ____ you at the conference next month.",
+      correctAnswer: "meeting",
+      options: ["meet", "meeting", "met", "be meeting"],
       category: "grammar",
       difficulty: 2,
    },

@@ -5,15 +5,14 @@ import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const Index = () => {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar style="light" />
+    <View style={styles.container}>
+      <StatusBar hidden />
+
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -73,7 +72,6 @@ const Index = () => {
           />
 
           <GameCard
-
             title="Sentence Complete"
             description="Fill in the blanks and master vocabulary."
             icon="text"
@@ -81,6 +79,7 @@ const Index = () => {
             onPress={() => router.push("./games/sentence-complete")}
             delay={1200}
           />
+
           <GameCard
             title="Weight Balance"
             description="Balance the scale using fractional weight blocks."
@@ -97,6 +96,24 @@ const Index = () => {
             color="#10b981"
             onPress={() => router.push("./games/maze-escape")}
             delay={1400}
+          />
+
+          <GameCard
+            title="Word Polarity"
+            description="Classify words as Positive or Negative quickly!"
+            icon="swap-horizontal"
+            color="#ec4899"
+            onPress={() => router.push("./games/word-polarity")}
+            delay={1500}
+          />
+
+          <GameCard
+            title="Rocket Synonyme"
+            description="Match synonyms to improve vocabulary."
+            icon="rocket"
+            color="#f59e0b"
+            onPress={() => router.push("./games/rocket-synonyme")}
+            delay={1600}
           />
         </View>
       </ScrollView>
@@ -130,7 +147,7 @@ const styles = StyleSheet.create({
     color: "#111",
   },
   highlight: {
-    color: "#03B56A"
+    color: "#03B56A",
   },
   subtitle: {
     color: "#a1a1aa",

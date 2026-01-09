@@ -1,4 +1,5 @@
 import { AnimatedNumberBadge } from "@/components/AnimatedNumberBadge";
+import { GameResult } from "@/components/GameResult";
 import { MascotFeedback } from "@/components/MascotFeedback";
 import { SubtleConfetti } from "@/components/SubtleConfetti";
 import { ZipCell } from "@/components/ZipCell";
@@ -8,7 +9,6 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-   Alert,
    Dimensions,
    Platform,
    Pressable,
@@ -33,7 +33,7 @@ import Svg, { Circle, Path } from "react-native-svg";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-type GameStatus = "PLAYING" | "LEVEL_COMPLETE" | "GAME_OVER";
+type GameStatus = "PLAYING" | "LEVEL_COMPLETE" | "GAME_OVER" | "ALL_COMPLETE";
 
 export default function ZipGameScreen() {
    const router = useRouter();
@@ -321,19 +321,19 @@ export default function ZipGameScreen() {
          setStatus("PLAYING");
          setMascotMessage("");
       } else {
-         Alert.alert("🎉 Victory!", `You completed all ${ZIP_LEVELS.length} levels!\nFinal Score: ${score}`, [
-            {
-               text: "Play Again", onPress: () => {
-                  setCurrentLevelIndex(0);
-                  setPath([]);
-                  setScore(0);
-                  setStatus("PLAYING");
-                  setMascotMessage("");
-               }
-            },
-            { text: "Home", onPress: () => router.back() },
-         ]);
+         // All levels completed - show GameResult
+         setStatus("ALL_COMPLETE");
+         setMascotMessage("Amazing! You completed all levels!");
       }
+   };
+
+   // Restart game from beginning
+   const restartGame = () => {
+      setCurrentLevelIndex(0);
+      setPath([]);
+      setScore(0);
+      setStatus("PLAYING");
+      setMascotMessage("");
    };
 
    // Get cell center position for SVG path
@@ -471,31 +471,34 @@ export default function ZipGameScreen() {
                      },
                   ]}
                   onLayout={() => {
-                     if (gridRef.current) {
-                        if (Platform.OS === 'web') {
-                           // Web: use getBoundingClientRect
-                           const element = gridRef.current as unknown as HTMLElement;
-                           if (element.getBoundingClientRect) {
-                              const rect = element.getBoundingClientRect();
-                              setGridLayout({
-                                 x: rect.left + 1, // Offset for border
-                                 y: rect.top + 1,  // Offset for border
-                                 width: gridWidth,
-                                 height: gridHeight,
+                     // Delay measurement to ensure entering animation is complete
+                     setTimeout(() => {
+                        if (gridRef.current) {
+                           if (Platform.OS === 'web') {
+                              // Web: use getBoundingClientRect
+                              const element = gridRef.current as unknown as HTMLElement;
+                              if (element.getBoundingClientRect) {
+                                 const rect = element.getBoundingClientRect();
+                                 setGridLayout({
+                                    x: rect.left + 1,
+                                    y: rect.top + 1,
+                                    width: gridWidth,
+                                    height: gridHeight,
+                                 });
+                              }
+                           } else {
+                              // Native: use measureInWindow
+                              gridRef.current.measureInWindow((x, y) => {
+                                 setGridLayout({
+                                    x: x + 1,
+                                    y: y + 1,
+                                    width: gridWidth,
+                                    height: gridHeight,
+                                 });
                               });
                            }
-                        } else {
-                           // Native: use measureInWindow
-                           gridRef.current.measureInWindow((x, y) => {
-                              setGridLayout({
-                                 x: x + 1, // Offset for border
-                                 y: y + 1, // Offset for border
-                                 width: gridWidth,
-                                 height: gridHeight,
-                              });
-                           });
                         }
-                     }
+                     }, 400); // Wait for FadeInDown animation to complete
                   }}
                >
                   {/* Grid cells */}
@@ -599,10 +602,10 @@ export default function ZipGameScreen() {
          </Animated.Text>
 
          {/* Subtle Confetti */}
-         <SubtleConfetti isVisible={status === "LEVEL_COMPLETE"} />
+         <SubtleConfetti isVisible={status === "LEVEL_COMPLETE" || status === "ALL_COMPLETE"} />
 
-         {/* Mascot Overlay */}
-         {mascotMessage ? (
+         {/* Mascot Overlay - Only show during gameplay */}
+         {mascotMessage && status !== "ALL_COMPLETE" ? (
             <Animated.View
                entering={SlideInDown.duration(400).springify().damping(18)}
                exiting={SlideOutDown.duration(300)}
@@ -611,6 +614,16 @@ export default function ZipGameScreen() {
                <MascotFeedback text={mascotMessage} />
             </Animated.View>
          ) : null}
+
+         {/* Game Result - Show when all levels completed */}
+         {status === "ALL_COMPLETE" && (
+            <GameResult
+               scorePercentage={Math.min(100, Math.round((score / (ZIP_LEVELS.length * 100)) * 100))}
+               onRetry={restartGame}
+               onHome={() => router.back()}
+               onExit={() => router.back()}
+            />
+         )}
 
       </Pressable>
    );

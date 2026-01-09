@@ -1,10 +1,10 @@
+import { GameResult } from "@/components/GameResult";
 import { MascotFeedback } from "@/components/MascotFeedback";
 import { PieTimer } from "@/components/PieTimer";
 import { COLORS } from "@/constants/gameConfig";
 import { AVAILABLE_ICONS } from "@/constants/iconMemoryGameIcon";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useState } from "react";
@@ -18,7 +18,6 @@ import {
 } from "react-native";
 import Animated, {
     FadeIn,
-    FadeInDown,
     FadeInUp,
     useAnimatedStyle,
     useSharedValue,
@@ -467,106 +466,18 @@ export default function IconMemoryGame() {
                 />
             </View>
 
-            {/* Game Over Screen */}
-            {status === "GAME_OVER" && (
-                <Animated.View
-                    entering={FadeInDown.springify()}
-                    style={styles.endScreen}
-                >
-                    <View style={styles.endIconContainer}>
-                        <LinearGradient
-                            colors={["rgba(248, 113, 113, 0.2)", "rgba(248, 113, 113, 0.05)"]}
-                            style={styles.endIconGradient}
-                        >
-                            <Ionicons name="close-circle" size={80} color={COLORS.error} />
-                        </LinearGradient>
-                    </View>
-                    <Text style={styles.endTitle}>Game Over!</Text>
-                    <Text style={styles.endSubtitle}>
-                        You repeated an icon on Layer {currentLayer}
-                    </Text>
-                    <View style={styles.statsContainer}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{currentLayer - 1}</Text>
-                            <Text style={styles.statLabel}>Layers Cleared</Text>
-                        </View>
-                        <View style={styles.statDivider} />
-                        <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{clickedIcons.size}</Text>
-                            <Text style={styles.statLabel}>Icons Selected</Text>
-                        </View>
-                    </View>
-                    <View style={styles.endButtons}>
-                        <TouchableOpacity
-                            style={styles.retryButton}
-                            onPress={initializeGame}
-                        >
-                            <Ionicons name="refresh" size={22} color="#fff" />
-                            <Text style={styles.retryButtonText}>Try Again</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.homeButton}
-                            onPress={() => router.back()}
-                        >
-                            <Ionicons name="home" size={22} color="#a1a1aa" />
-                        </TouchableOpacity>
-                    </View>
-                </Animated.View>
-            )}
-
-            {/* Success Screen */}
-            {status === "SUCCESS" && (
-                <Animated.View
-                    entering={FadeInDown.springify()}
-                    style={styles.endScreen}
-                >
-                    <View style={styles.endIconContainer}>
-                        <LinearGradient
-                            colors={["rgba(74, 222, 128, 0.2)", "rgba(74, 222, 128, 0.05)"]}
-                            style={styles.endIconGradient}
-                        >
-                            <Ionicons name="trophy" size={80} color={COLORS.success} />
-                        </LinearGradient>
-                    </View>
-                    <Text style={[styles.endTitle, { color: COLORS.success }]}>
-                        Perfect Memory!
-                    </Text>
-                    <Text style={styles.endSubtitle}>
-                        You completed all {TOTAL_LAYERS} layers without repeating!
-                    </Text>
-                    <View style={styles.statsContainer}>
-                        <View style={styles.statItem}>
-                            <Text style={[styles.statValue, { color: COLORS.success }]}>
-                                {TOTAL_LAYERS}
-                            </Text>
-                            <Text style={styles.statLabel}>Layers Completed</Text>
-                        </View>
-                        <View style={styles.statDivider} />
-                        <View style={styles.statItem}>
-                            <Text style={[styles.statValue, { color: COLORS.success }]}>
-                                {clickedIcons.size}
-                            </Text>
-                            <Text style={styles.statLabel}>Unique Icons</Text>
-                        </View>
-                    </View>
-                    <View style={styles.endButtons}>
-                        <TouchableOpacity
-                            style={[styles.retryButton, { backgroundColor: COLORS.success }]}
-                            onPress={initializeGame}
-                        >
-                            <Ionicons name="refresh" size={22} color="#000" />
-                            <Text style={[styles.retryButtonText, { color: "#000" }]}>
-                                Play Again
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.homeButton}
-                            onPress={() => router.back()}
-                        >
-                            <Ionicons name="home" size={22} color="#a1a1aa" />
-                        </TouchableOpacity>
-                    </View>
-                </Animated.View>
+            {(status === "GAME_OVER" || status === "SUCCESS") && (
+                <GameResult
+                    scorePercentage={Math.round(((currentLayer - 1) / TOTAL_LAYERS) * 100)}
+                    onRetry={initializeGame}
+                    onHome={() => router.back()}
+                    onExit={() => router.back()}
+                    mascotMessage={
+                        status === "SUCCESS"
+                            ? "Perfect memory! You're amazing!"
+                            : "Don't give up! Try again!"
+                    }
+                />
             )}
         </View>
     );
