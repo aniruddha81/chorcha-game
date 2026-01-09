@@ -1,27 +1,24 @@
 /**
  * GameResult Component
- * Full-screen result overlay that pops up after game ends
- * Matches the design with score circle, action buttons, and mascot feedback
+ * A premium popup-style result screen with smooth animations and polished UI.
  */
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Dimensions,
     Image,
-    ImageBackground,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from "react-native";
 import Animated, {
     Easing,
-    FadeIn,
+    FadeInDown,
     FadeInUp,
-    SlideInDown,
     useAnimatedProps,
     useAnimatedStyle,
     useSharedValue,
@@ -30,358 +27,206 @@ import Animated, {
     withTiming,
     ZoomIn
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// Colors matching the design
+// Premium Color Palette
 const COLORS = {
-    primary: "#22C55E",       // Green
-    primaryDark: "#16A34A",
-    success: "#22C55E",
-    error: "#EF4444",         // Red
+    primary: "#10B981",       // Vibrant Green
+    primaryDark: "#059669",
+    secondary: "#F59E0B",     // Amber/Gold
+    background: "#FFFFFF",
+    text: "#1F2937",
+    textLight: "#6B7280",
     white: "#FFFFFF",
-    black: "#1C1C1E",
-    yellow: "#FFD93D",
-    orange: "#FFA500",
+    overlay: "rgba(0,0,0,0.6)", // Darker, premium backdrop
+    success: "#10B981",
+    error: "#EF4444",
 };
 
-// Score circle size
-const CIRCLE_SIZE = 180;
-const STROKE_WIDTH = 14;
+const CIRCLE_SIZE = 160;
+const STROKE_WIDTH = 12;
 
 interface GameResultProps {
-    /** Score percentage (0-100) */
     scorePercentage: number;
-    /** Callback when retry button is pressed */
     onRetry: () => void;
-    /** Callback when home button is pressed (optional - defaults to router.back()) */
     onHome?: () => void;
-    /** Callback when exit button is pressed (optional) */
     onExit?: () => void;
-    /** Average score to compare against (default: 50) */
     averageScore?: number;
-    /** Custom mascot message (optional - auto-generated based on score) */
     mascotMessage?: string;
 }
 
-// Animated SVG Circle for progress
+// Animated SVG Circle
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-// Score Circle Component
 const ScoreCircle = ({ percentage }: { percentage: number }) => {
     const progress = useSharedValue(0);
-    const scale = useSharedValue(0.5);
+    const scale = useSharedValue(0);
 
     const radius = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
     const circumference = 2 * Math.PI * radius;
     const center = CIRCLE_SIZE / 2;
+    const arcRadius = radius - STROKE_WIDTH / 2;
 
-    const isGoodScore = percentage >= 50;
+    // Star Position Logic (Clockwise from Bottom)
+    // 90deg offset so 0 is bottom.
+    const thetaDegrees = 90 + (percentage / 100) * 360;
+    const thetaRadians = thetaDegrees * (Math.PI / 180);
+    const starX = center + arcRadius * Math.cos(thetaRadians);
+    const starY = center + arcRadius * Math.sin(thetaRadians);
 
     useEffect(() => {
-        // Animate the progress arc
-        progress.value = withDelay(
-            300,
-            withTiming(percentage / 100, {
-                duration: 1200,
-                easing: Easing.bezierFn(0.25, 0.1, 0.25, 1),
-            })
-        );
-        // Animate scale in
-        scale.value = withDelay(
-            100,
-            withSpring(1, { damping: 12, stiffness: 100 })
-        );
+        progress.value = withDelay(500, withTiming(percentage / 100, { duration: 1500, easing: Easing.out(Easing.exp) }));
+        scale.value = withDelay(200, withSpring(1));
     }, [percentage]);
 
     const animatedCircleProps = useAnimatedProps(() => ({
         strokeDashoffset: circumference * (1 - progress.value),
     }));
 
-    const containerStyle = useAnimatedStyle(() => ({
+    const style = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
     }));
 
     return (
-        <Animated.View
-            entering={ZoomIn.delay(100).springify()}
-            style={[styles.scoreCircleContainer, containerStyle]}
-        >
-            {/* Star badge for good scores */}
-            {isGoodScore && (
-                <Animated.View
-                    entering={ZoomIn.delay(800).springify()}
-                    style={styles.starContainer}
-                >
-                    <View style={styles.starBadge}>
-                        <Ionicons name="star" size={16} color={COLORS.yellow} />
-                    </View>
-                </Animated.View>
-            )}
-
+        <Animated.View style={[styles.scoreCircleContainer, style]}>
             <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
-                {/* Background green circle */}
-                <Circle
-                    cx={center}
-                    cy={center}
-                    r={radius}
-                    fill={COLORS.primary}
-                />
-
-                {/* Inner shadow effect */}
-                <Circle
-                    cx={center}
-                    cy={center}
-                    r={radius - STROKE_WIDTH / 2}
-                    fill="rgba(0,0,0,0.05)"
-                />
-
-                {/* Progress arc (white) */}
+                <Circle cx={center} cy={center} r={radius} stroke="#E5E7EB" strokeWidth={STROKE_WIDTH} fill="transparent" />
                 <AnimatedCircle
-                    cx={center}
-                    cy={center}
-                    r={radius - STROKE_WIDTH / 2}
-                    stroke={COLORS.white}
+                    cx={center} cy={center} r={radius}
+                    stroke={COLORS.primary}
                     strokeWidth={STROKE_WIDTH}
                     fill="transparent"
                     strokeLinecap="round"
                     strokeDasharray={circumference}
                     animatedProps={animatedCircleProps}
-                    rotation={-90}
+                    rotation={90}
                     origin={`${center}, ${center}`}
                 />
             </Svg>
 
-            {/* Score Text */}
-            <View style={styles.scoreTextContainer}>
-                <Text style={styles.scoreLabel}>Your score higher than</Text>
+            {/* Centered Score Text */}
+            <View style={styles.innerScoreContainer}>
+                <Text style={styles.scoreLabel}>Accuracy</Text>
                 <AnimatedPercentageText percentage={percentage} />
-                <Text style={styles.scoreSubLabel}>of people.</Text>
             </View>
+
+            {/* Floating Star */}
+            <Animated.View
+                style={[styles.floatingStar, { left: starX - 16, top: starY - 16 }]}
+                entering={ZoomIn.delay(1800).springify()}
+            >
+                <View style={styles.starBadge}>
+                    <Ionicons name="star" size={18} color={COLORS.white} />
+                </View>
+            </Animated.View>
         </Animated.View>
     );
 };
 
-// Animated percentage text that counts up
 const AnimatedPercentageText = ({ percentage }: { percentage: number }) => {
     const [displayValue, setDisplayValue] = useState(0);
-    const animationRef = useRef<number | null>(null);
 
     useEffect(() => {
-        const duration = 1200;
-        const startDelay = 300;
+        let start = 0;
+        const duration = 1500;
+        const startTime = Date.now();
 
-        const timeout = setTimeout(() => {
-            const startTime = Date.now();
-
-            const animate = () => {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const eased = 1 - Math.pow(1 - progress, 3);
-                setDisplayValue(Math.round(percentage * eased));
-
-                if (progress < 1) {
-                    animationRef.current = requestAnimationFrame(animate);
-                }
-            };
-            animate();
-        }, startDelay);
-
-        return () => {
-            clearTimeout(timeout);
-            if (animationRef.current) {
-                cancelAnimationFrame(animationRef.current);
+        const timer = setInterval(() => {
+            const timePassed = Date.now() - startTime;
+            if (timePassed >= duration) {
+                setDisplayValue(percentage);
+                clearInterval(timer);
+                return;
             }
-        };
+            const progress = timePassed / duration;
+            // Ease out quart
+            const ease = 1 - Math.pow(1 - progress, 4);
+            setDisplayValue(Math.floor(percentage * ease));
+        }, 16);
+        return () => clearInterval(timer);
     }, [percentage]);
 
-    return (
-        <Text style={styles.scorePercentage}>{displayValue}%</Text>
-    );
+    return <Text style={styles.percentageText}>{displayValue}%</Text>;
 };
 
-// Action Button Component
-const ActionButton = ({
-    icon,
-    onPress,
-    delay = 0,
-}: {
-    icon: keyof typeof Ionicons.glyphMap;
-    onPress: () => void;
-    delay?: number;
-}) => {
-    const handlePress = useCallback(() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress();
-    }, [onPress]);
-
+const ActionButton = ({ icon, onPress, delay }: any) => {
     return (
         <Animated.View entering={FadeInUp.delay(delay).springify()}>
             <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handlePress}
+                style={styles.iconButton}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onPress(); }}
                 activeOpacity={0.8}
             >
-                <Ionicons name={icon} size={24} color={COLORS.primary} />
+                <Ionicons name={icon} size={32} color={COLORS.secondary} />
             </TouchableOpacity>
         </Animated.View>
-    );
-};
+    )
+}
 
-// Mascot with Speech Bubble Component
-const MascotWithBubble = ({
-    isAboveAverage,
-}: {
-    isAboveAverage: boolean;
-}) => {
-    return (
-        <Animated.View
-            entering={SlideInDown.delay(400).springify()}
-            style={styles.mascotSection}
-        >
-            {/* Speech Bubble */}
-            <Animated.View
-                entering={ZoomIn.delay(700).springify()}
-                style={[
-                    styles.speechBubble,
-                    isAboveAverage ? styles.speechBubbleRight : styles.speechBubbleLeft,
-                ]}
-            >
-                {/* Arrow indicator */}
-                <View style={[
-                    styles.arrowIndicator,
-                    isAboveAverage ? styles.arrowRight : styles.arrowLeft,
-                ]}>
-                    <Ionicons
-                        name={isAboveAverage ? "trending-up" : "trending-down"}
-                        size={14}
-                        color={isAboveAverage ? COLORS.success : COLORS.error}
-                    />
-                </View>
-
-                <Text style={styles.bubbleText}>
-                    Your score was{"\n"}
-                    <Text style={[
-                        styles.bubbleHighlight,
-                        { color: isAboveAverage ? COLORS.success : COLORS.error }
-                    ]}>
-                        {isAboveAverage ? "above" : "below"}
-                    </Text>
-                    {" "}average
-                </Text>
-
-                {/* Speech Bubble Tail */}
-                <View style={[
-                    styles.bubbleTail,
-                    isAboveAverage ? styles.bubbleTailRight : styles.bubbleTailLeft,
-                ]} />
-            </Animated.View>
-
-            {/* Mascot Image */}
-            <View style={[
-                styles.mascotImageContainer,
-                isAboveAverage ? styles.mascotRight : styles.mascotLeft,
-            ]}>
-                <Image
-                    source={require("../assets/images/chorcha-mascot.png")}
-                    style={styles.mascotImage}
-                    resizeMode="contain"
-                />
-            </View>
-        </Animated.View>
-    );
-};
-
-export const GameResult = ({
-    scorePercentage,
-    onRetry,
-    onHome,
-    onExit,
-    averageScore = 50,
-}: GameResultProps) => {
+export const GameResult = ({ scorePercentage, onRetry, onHome = () => { }, onExit, averageScore = 50 }: GameResultProps) => {
     const router = useRouter();
-    const insets = useSafeAreaInsets();
-
-    const isAboveAverage = scorePercentage >= averageScore;
-
-    const handleHome = useCallback(() => {
-        if (onHome) {
-            onHome();
-        } else {
-            router.back();
-        }
-    }, [onHome, router]);
-
-    const handleExit = useCallback(() => {
-        if (onExit) {
-            onExit();
-        } else {
-            router.replace("/");
-        }
-    }, [onExit, router]);
-
-    // Play celebratory haptic for good scores
-    useEffect(() => {
-        if (isAboveAverage) {
-            setTimeout(() => {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }, 400);
-        } else {
-            setTimeout(() => {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            }, 400);
-        }
-    }, [isAboveAverage]);
+    const isHighScale = scorePercentage >= averageScore;
 
     return (
-        <Animated.View
-            entering={FadeIn.duration(300)}
-            style={styles.overlay}
-        >
-            <StatusBar style="dark" />
+        <View style={styles.overlay}>
+            <StatusBar style="light" />
+            <View style={styles.backdropOverlay} />
 
-            {/* Background Image */}
-            <ImageBackground
-                source={require("../assets/images/resultBG.png")}
-                style={styles.backgroundImage}
-                resizeMode="cover"
-            >
-                {/* Safe Area Content */}
-                <View style={[styles.content, { paddingTop: insets.top + 30 }]}>
-                    {/* Score Circle */}
-                    <View style={styles.scoreSection}>
-                        <ScoreCircle percentage={scorePercentage} />
+            {/* Main Popup Wrapper (allows mascot overflow) */}
+            <Animated.View entering={FadeInDown.springify().damping(15)} style={styles.popupWrapper}>
+
+                {/* Inner Card (Clips Background) */}
+                <View style={styles.innerCard}>
+                    {/* Background Image for Card */}
+                    <Image
+                        source={require("../assets/images/resultBG.png")}
+                        style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
+                        resizeMode="stretch"
+                    />
+
+                    {/* Main Content */}
+                    <View style={styles.cardContent}>
+                        {/* Title */}
+                        <Animated.Text entering={FadeInDown.delay(200)} style={styles.title}>
+                            {isHighScale ? "Great Job!" : "Completed!"}
+                        </Animated.Text>
+                        <Animated.Text entering={FadeInDown.delay(300)} style={styles.subtitle}>
+                            {isHighScale ? "You're doing amazing! Keep it up." : "Nice try! Practice makes perfect."}
+                        </Animated.Text>
+
+                        {/* Score */}
+                        <View style={styles.scoreWrapper}>
+                            <ScoreCircle percentage={scorePercentage} />
+                        </View>
+
+                        <View style={styles.actionsContainer}>
+                            <ActionButton icon="refresh" onPress={onRetry} delay={600} />
+                            <ActionButton icon="home" onPress={() => router.back()} delay={700} />
+                            <ActionButton icon="log-out" onPress={onExit || (() => router.back())} delay={800} />
+                        </View>
                     </View>
-
-                    {/* Action Buttons */}
-                    <View style={styles.actionButtonsRow}>
-                        <ActionButton
-                            icon="refresh"
-                            onPress={onRetry}
-                            delay={500}
-                        />
-                        <ActionButton
-                            icon="home"
-                            onPress={handleHome}
-                            delay={600}
-                        />
-                        <ActionButton
-                            icon="exit-outline"
-                            onPress={handleExit}
-                            delay={700}
-                        />
-                    </View>
-
-                    {/* Spacer to push mascot to bottom */}
-                    <View style={styles.spacer} />
-
-                    {/* Mascot Section */}
-                    <MascotWithBubble isAboveAverage={isAboveAverage} />
                 </View>
-            </ImageBackground>
-        </Animated.View>
+                <Animated.View
+                    entering={FadeInUp.delay(900).springify()}
+                    style={styles.mascotContainer}
+                >
+                    <Image
+                        source={require("../assets/images/chorcha-mascot.png")}
+                        style={styles.mascotImage}
+                        resizeMode="contain"
+                    />
+                    <View style={[styles.bubble, isHighScale ? styles.bubbleHappy : styles.bubbleSad]}>
+                        <Text style={styles.bubbleText}>
+                            {isHighScale ? "Wow!" : "Oops!"}
+                        </Text>
+                        <View style={[styles.bubbleArrow, isHighScale ? styles.arrowHappy : styles.arrowSad]} />
+                    </View>
+                </Animated.View>
+
+            </Animated.View>
+        </View>
     );
 };
 
@@ -389,178 +234,185 @@ const styles = StyleSheet.create({
     overlay: {
         ...StyleSheet.absoluteFillObject,
         zIndex: 9999,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    backgroundImage: {
-        flex: 1,
-        width: "100%",
-        height: "100%",
+    backdropOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "rgba(0,0,0,0.4)",
     },
-    content: {
-        flex: 1,
-        alignItems: "center",
-        paddingHorizontal: 20,
+    popupWrapper: {
+        width: '100%',
+        height: '90%',
+        maxWidth: 400,
+        elevation: 8,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+        position: 'relative',
     },
-    scoreSection: {
-        marginTop: 20,
+    innerCard: {
+        borderRadius: 32,
+        overflow: 'hidden',
+        width: '100%',
+        height: '100%', // Fill wrapper height
+    },
+    cardContent: {
+        // flex: 1, 
+        marginVertical: 20,
+        paddingVertical: 40,
+        paddingHorizontal: 24,
+        alignItems: 'center',
+        justifyContent: 'space-between', // Distribute elements
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: COLORS.text,
+        marginBottom: 8,
+    },
+    subtitle: {
+        fontSize: 14,
+        color: COLORS.textLight,
+        textAlign: 'center',
+        marginBottom: 32,
+    },
+    scoreWrapper: {
+        marginBottom: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     scoreCircleContainer: {
-        position: "relative",
+        position: 'relative',
         width: CIRCLE_SIZE,
         height: CIRCLE_SIZE,
-        alignItems: "center",
-        justifyContent: "center",
     },
-    starContainer: {
-        position: "absolute",
-        top: 0,
-        right: 0,
-        zIndex: 10,
-    },
-    starBadge: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        backgroundColor: COLORS.white,
-        alignItems: "center",
-        justifyContent: "center",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    scoreTextContainer: {
-        position: "absolute",
-        alignItems: "center",
-        justifyContent: "center",
+    innerScoreContainer: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     scoreLabel: {
-        fontSize: 11,
-        color: COLORS.white,
-        fontWeight: "500",
-        textAlign: "center",
-        marginBottom: 2,
-        opacity: 0.95,
+        fontSize: 12,
+        fontWeight: '600',
+        color: COLORS.textLight,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
     },
-    scorePercentage: {
-        fontSize: 52,
-        fontWeight: "bold",
-        color: COLORS.white,
-        textAlign: "center",
-        letterSpacing: -2,
+    percentageText: {
+        fontSize: 36,
+        fontWeight: '900',
+        color: COLORS.text,
     },
-    scoreSubLabel: {
-        fontSize: 11,
-        color: COLORS.white,
-        fontWeight: "400",
-        textAlign: "center",
-        marginTop: 0,
-        opacity: 0.9,
+    floatingStar: {
+        position: 'absolute',
+        width: 32,
+        height: 32,
     },
-    actionButtonsRow: {
-        flexDirection: "row",
-        gap: 14,
-        marginTop: 28,
+    starBadge: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: COLORS.secondary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: COLORS.white,
     },
-    actionButton: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        backgroundColor: COLORS.white,
-        alignItems: "center",
-        justifyContent: "center",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.12,
-        shadowRadius: 6,
-        elevation: 4,
-    },
-    spacer: {
-        flex: 1,
-    },
-    mascotSection: {
-        width: "100%",
-        height: 300,
-        position: "relative",
-    },
-    speechBubble: {
-        position: "absolute",
-        backgroundColor: COLORS.black,
+    statsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        marginBottom: 32,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 20,
         paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 18,
-        minWidth: 140,
-        maxWidth: 180,
-        zIndex: 10,
-        top: 10,
     },
-    speechBubbleLeft: {
-        left: 10,
+    statItem: {
+        alignItems: 'center',
+        paddingHorizontal: 24,
     },
-    speechBubbleRight: {
-        right: 10,
+    statDivider: {
+        width: 1,
+        height: 24,
+        backgroundColor: '#E5E7EB',
     },
-    bubbleText: {
-        color: COLORS.white,
-        fontSize: 15,
-        fontWeight: "500",
-        lineHeight: 20,
+    statValue: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: COLORS.text,
     },
-    bubbleHighlight: {
-        fontWeight: "700",
+    statLabel: {
+        fontSize: 12,
+        color: COLORS.textLight,
+        marginTop: 2,
     },
-    bubbleTail: {
-        position: "absolute",
-        width: 0,
-        height: 0,
-        borderLeftWidth: 10,
-        borderLeftColor: "transparent",
-        borderRightWidth: 10,
-        borderRightColor: "transparent",
-        borderTopWidth: 14,
-        borderTopColor: COLORS.black,
-        bottom: -12,
+    actionsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 20, // More spacing
+        width: '100%',
+        marginBottom: 20
     },
-    bubbleTailLeft: {
-        left: 25,
-        transform: [{ rotate: "-15deg" }],
-    },
-    bubbleTailRight: {
-        right: 25,
-        transform: [{ rotate: "15deg" }],
-    },
-    arrowIndicator: {
-        position: "absolute",
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+    iconButton: {
+        width: 64,
+        height: 64,
+        borderRadius: 20,
         backgroundColor: COLORS.white,
-        alignItems: "center",
-        justifyContent: "center",
-        top: -8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        // Shadow
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
     },
-    arrowLeft: {
-        left: -6,
-    },
-    arrowRight: {
-        right: -6,
-    },
-    mascotImageContainer: {
-        position: "absolute",
-        bottom: 0,
-        width: 220,
-        height: 220,
-    },
-    mascotLeft: {
-        left: -30,
-    },
-    mascotRight: {
-        right: -30,
+    mascotContainer: {
+        position: 'absolute',
+        bottom: 50, // Adjusted for larger size
+        right: 30,  // Adjusted for larger size
+        width: 160,  // Increased from 120
+        height: 160, // Increased from 120
     },
     mascotImage: {
-        width: "100%",
-        height: "100%",
+        width: '100%',
+        height: '100%',
     },
+    bubble: {
+        position: 'absolute',
+        top: -10,
+        left: -30,
+        backgroundColor: COLORS.text,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+    },
+    bubbleHappy: { backgroundColor: COLORS.success },
+    bubbleSad: { backgroundColor: COLORS.secondary },
+    bubbleText: {
+        color: COLORS.white,
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
+    bubbleArrow: {
+        position: 'absolute',
+        bottom: -6,
+        right: 12,
+        width: 0,
+        height: 0,
+        borderLeftWidth: 6,
+        borderLeftColor: 'transparent',
+        borderRightWidth: 6,
+        borderRightColor: 'transparent',
+        borderTopWidth: 6,
+    },
+    arrowHappy: { borderTopColor: COLORS.success },
+    arrowSad: { borderTopColor: COLORS.secondary },
 });
 
 export default GameResult;
